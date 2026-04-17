@@ -19,19 +19,52 @@ def get_slug(url):
     return url.split('?')[0].strip('/').replace('watch/', '', 1)
 
 def parse_card(el):
-    t = el.find(['h3', 'h2', 'div'], class_=['film-name', 'film-title']) or el.find('a', title=True)
-    a = el.find('a', href=True)
+    # Support for standard cards and spotlight cards
+    t = el.find(['h3', 'h2', 'div'], class_=['film-name', 'film-title', 'desi-head-title']) or el.find('a', title=True)
+    a = el.find('a', class_='film-poster') or el.find('a', href=True)
     i = el.find('img')
     ts = el.find('div', class_='tick-sub')
     td = el.find('div', class_='tick-dub')
     te = el.find('div', class_='tick-eps')
+    
+    jname = ""
+    dynamic_name = el.find(class_='dynamic-name')
+    if dynamic_name and dynamic_name.get('data-jname'):
+        jname = dynamic_name.get('data-jname')
+        
+    type_name = ""
+    duration = ""
+    release_date = ""
+    for fdi in el.find_all(['span', 'div'], class_=['fdi-item', 'scd-item']):
+        if fdi.find(class_=re.compile(r'tick')):
+            continue
+            
+        text = fdi.get_text().strip()
+        if not text or text in ["HD", "SD"]:
+            continue
+            
+        if "m" in text or "h" in text:
+            duration = text
+        elif re.search(r'\d{4}', text): # Looks like a date (e.g. Oct 20, 1999)
+            release_date = text
+        elif not type_name:
+            type_name = text
+            
+    desc_tag = el.find('div', class_='desi-description')
+    description = desc_tag.get_text().strip() if desc_tag else ""
+    
     return {
         "title": t.get('title') or t.get_text().strip() if t else "Unknown",
+        "japanese_title": jname,
         "anime_id": get_slug(a['href']) if a else "",
         "image": i.get('data-src') or i.get('src') or "" if i else "",
+        "type": type_name,
+        "duration": duration,
+        "release_date": release_date,
         "sub": ts.get_text().strip() if ts else None,
         "dub": td.get_text().strip() if td else None,
-        "episodes": te.get_text().strip() if te else None
+        "episodes": te.get_text().strip() if te else None,
+        "description": description
     }
 
 @app.get("/home")
@@ -39,11 +72,26 @@ def get_home():
     try:
         r = requests.get(f"{BASE_URL}/home", headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
-        data = {"trending": [], "top_airing": [], "most_popular": [], "most_favorite": [], "latest_completed": [], "latest_episodes": []}
+        data = {
+            "spotlight": [],
+            "trending": [], 
+            "top_airing": [], 
+            "most_popular": [], 
+            "most_favorite": [], 
+            "latest_completed": [], 
+            "latest_episodes": [],
+            "genres": []
+        }
         
+        # Spotlights (Hero Slider)
+        for item in soup.select("#slider .swiper-slide"):
+            data["spotlight"].append(parse_card(item))
+            
+        # Trending
         for item in soup.select("#trending-home .swiper-slide"):
             data["trending"].append(parse_card(item))
             
+        # Sidebar Blocks (Top Airing, etc.)
         for h in soup.select(".anif-block-header"):
             k = h.get_text().strip().lower().replace(" ", "_")
             if k in data:
@@ -52,8 +100,16 @@ def get_home():
                     for li in ul.find_all("li"):
                         data[k].append(parse_card(li))
                         
+        # Latest Episodes
         for item in soup.find_all('div', class_=re.compile(r'flw-item')):
             data["latest_episodes"].append(parse_card(item))
+            
+        # Genres from navigation menu
+        genres_set = set()
+        for a in soup.find_all("a", href=True):
+            if "/genre/" in a["href"]:
+                genres_set.add(a.text.strip())
+        data["genres"] = sorted(list(genres_set))
             
         return data
     except Exception as e:
