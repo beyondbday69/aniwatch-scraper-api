@@ -15,6 +15,7 @@ FastAPI-based scraper and API for `aniwatchtv.to`. Fetches anime details, search
 
 | Endpoint | Description |
 |----------|-------------|
+| `GET /home` | Fetches trending, top airing, most popular, most favorite, latest completed, and latest episodes. |
 | `GET /popular` | Top trending anime on home page. |
 | `GET /search?q={query}` | Search anime by title or ID. Returns full slugs. |
 | `GET /anime/{id_or_slug}` | Detailed metadata, description, and season list. |
