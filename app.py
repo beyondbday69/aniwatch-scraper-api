@@ -67,6 +67,41 @@ def parse_card(el):
         "description": description
     }
 
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AniwatchTV API</title>
+        <style>
+            body { background: #0b0b0b; color: #eee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+            .card { background: #161616; padding: 40px; border-radius: 15px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 500px; }
+            h1 { color: #ffdd95; margin-bottom: 10px; }
+            p { color: #888; margin-bottom: 30px; }
+            .links { display: flex; flex-direction: column; gap: 15px; }
+            .btn { text-decoration: none; padding: 12px; border-radius: 8px; font-weight: bold; transition: 0.3s; }
+            .btn-primary { background: #ffdd95; color: #000; }
+            .btn-primary:hover { background: #ffe4a8; transform: translateY(-2px); }
+            .btn-outline { border: 1px solid #444; color: #ccc; }
+            .btn-outline:hover { background: #222; border-color: #666; }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>AniwatchTV API</h1>
+            <p>Unofficial high-performance scraper API for anime metadata and streaming sources.</p>
+            <div class="links">
+                <a href="/docs" class="btn btn-primary">Beautiful API Docs (Swagger)</a>
+                <a href="/tester" class="btn btn-outline">Iframe & Event Tester</a>
+                <a href="/home" class="btn btn-outline">Browse Home Data</a>
+                <a href="https://github.com/beyondbday69/aniwatch-scraper-api" class="btn btn-outline" target="_blank">GitHub Repository</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
 @app.get("/home")
 def get_home():
     try:
