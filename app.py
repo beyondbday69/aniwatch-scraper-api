@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Path
 import requests
 from bs4 import BeautifulSoup
 import re
 import base64
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Literal
 
 app = FastAPI(title="Aniwatch Unofficial API")
 
@@ -39,6 +40,8 @@ def parse_items(html):
             
             url_tag = item.find('a', class_='film-poster-ahref')
             url = url_tag.get('href') if url_tag else ""
+            ep_id = url_tag.get('data-id') if url_tag else ""
+            
             if url and url.startswith('/'):
                 url = BASE_URL + url
                 
@@ -57,6 +60,7 @@ def parse_items(html):
             eps = tick_eps.text.strip() if tick_eps else None
             
             items.append({
+                "ep_id": ep_id,
                 "title": title,
                 "url": url,
                 "image": img_url,
@@ -92,29 +96,24 @@ def search(q: str = Query(..., min_length=1)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/episode")
-def get_episode(url: str = Query(..., description="Episode URL from aniwatch.co.at")):
+@app.get("/stream/{ep_id}/{type}")
+def get_stream(
+    ep_id: str = Path(..., description="Episode ID extracted from search or popular endpoints"),
+    type: Literal["sub", "dub", "raw"] = Path(..., description="Type of stream (sub or dub)")
+):
     try:
-        # 1. Fetch Episode Page
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        # 1. Fetch Episode Page using WordPress post ID format to automatically resolve the URL
+        url = f"{BASE_URL}/?p={ep_id}"
+        r = requests.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
         r.raise_for_status()
         html = r.text
         
-        # 2. Extract Nonce and Episode ID
+        # 2. Extract Nonce
         nonce_match = re.search(r'var hianime_ep_ajax = \{"ajax_url":"[^"]+","episode_nonce":"([^"]+)"\}', html)
         if not nonce_match:
             raise Exception("Could not find episode nonce")
         nonce = nonce_match.group(1)
         
-        soup = BeautifulSoup(html, 'html.parser')
-        ani_detail = soup.find(id='ani_detail')
-        if not ani_detail:
-            raise Exception("Could not find episode details (ani_detail)")
-            
-        ep_id = ani_detail.get('data-id')
-        if not ep_id:
-            raise Exception("Could not find episode data-id")
-            
         # 3. Request Servers
         ajax_url = f"{BASE_URL}/wp-admin/admin-ajax.php"
         payload = {
@@ -133,24 +132,33 @@ def get_episode(url: str = Query(..., description="Episode URL from aniwatch.co.
         servers = []
         for s in server_items:
             server_name = s.get('data-server-name') or s.text.strip()
+            server_type = s.get('data-type') # sub or dub
+            
             data_hash = s.get('data-hash')
             if data_hash:
                 try:
                     video_url = base64.b64decode(data_hash).decode('utf-8')
-                    servers.append({
-                        "name": server_name,
-                        "type": s.get('data-type'), # sub or dub
-                        "url": video_url
-                    })
+                    if server_type == type:
+                        servers.append({
+                            "name": server_name,
+                            "type": server_type,
+                            "url": video_url
+                        })
                 except:
                     pass
+                    
+        if not servers:
+            raise HTTPException(status_code=404, detail=f"No '{type}' servers found for episode {ep_id}")
         
         return {
-            "episode_url": url,
+            "episode_id": ep_id,
+            "type": type,
             "download_link": res_data.get("dl_link"),
             "servers": servers
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

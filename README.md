@@ -4,9 +4,9 @@ A FastAPI application that scrapes anime data and video streaming links from `an
 
 ## Endpoints
 
-- `GET /popular`: Returns the most popular anime list.
-- `GET /search?q={query}`: Searches for an anime.
-- `GET /episode?url={episode_url}`: Fetches the video servers and iframe links for a given episode URL.
+- `GET /popular`: Returns the most popular anime list, including `ep_id` for each item.
+- `GET /search?q={query}`: Searches for an anime and returns items with their `ep_id`.
+- `GET /stream/{ep_id}/{type}`: Fetches the video servers and iframe links for a given `ep_id`. `type` can be `sub` or `dub`.
 
 ## Local Testing
 
@@ -28,5 +28,5 @@ A FastAPI application that scrapes anime data and video streaming links from `an
 Deploy this project on Vercel:
 ```bash
 npm i -g vercel
-vercel
+vercel --prod
 ```
