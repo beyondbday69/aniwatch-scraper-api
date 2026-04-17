@@ -1,35 +1,46 @@
-# AniwatchTV Unofficial API Scraper
+# AniwatchTV API (Unofficial)
 
-A FastAPI application that scrapes anime data and video streaming links from `aniwatchtv.to`.
+FastAPI-based scraper and API for `aniwatchtv.to`. Fetches anime details, search results, episode lists, and streaming sources.
 
-## Endpoints
+## Live Demo
+- **API Base:** [https://aniwatch-scraper-kappa.vercel.app](https://aniwatch-scraper-kappa.vercel.app)
+- **Iframe Tester:** [/tester](https://aniwatch-scraper-kappa.vercel.app/tester)
 
-- **`GET /popular`**: Returns the most popular anime list from the home page.
-- **`GET /search?q={query}`**: Searches for an anime and returns items with their `anime_id`.
-- **`GET /anime/{anime_id_or_slug}`**: Fetches full anime details, including description, images, metadata, and all seasons.
-- **`GET /episodes/{anime_id}`**: Fetches the full list of episodes for a specific anime.
-- **`GET /servers/{ep_id}`**: Fetches available video servers (VidSrc, MegaCloud, etc.) for a specific episode.
-- **`GET /sources/{server_id}`**: Fetches the final embed link/iframe for a specific server.
+## Features
+- **Slug Resolution:** Automatically resolves numeric IDs (e.g., `37`) to full slugs (`monster-37`).
+- **AJAX Support:** Mimics official site requests to bypass dynamic loading.
+- **Iframe Tester:** Built-in tool to verify streaming links.
 
-## Local Testing
+## API Endpoints
 
-1. Create virtual environment and install requirements:
+| Endpoint | Description |
+|----------|-------------|
+| `GET /popular` | Top trending anime on home page. |
+| `GET /search?q={query}` | Search anime by title or ID. Returns full slugs. |
+| `GET /anime/{id_or_slug}` | Detailed metadata, description, and season list. |
+| `GET /episodes/{anime_id}` | Full episode list with IDs for a series. |
+| `GET /servers/{ep_id}` | List of available servers (VidSrc, MegaCloud, etc.). |
+| `GET /sources/{server_id}` | Final embed link/iframe URL. |
+| `GET /tester` | Web interface to test iframe URLs. |
+
+## Local Setup
+
+1. **Install dependencies:**
    ```bash
-   python -m venv venv
-   source venv/bin/activate
    pip install -r requirements.txt
    ```
 
-2. Run the application:
+2. **Run server:**
    ```bash
    python app.py
    ```
-   The API will be available on `http://127.0.0.1:6969`.
+   API runs at `http://localhost:6969`.
 
 ## Deployment
-
-Deploy this project on Vercel:
+Deploy to Vercel:
 ```bash
-npm i -g vercel
 vercel --prod
 ```
+
+## Disclaimer
+This project is for educational purposes only. All content belongs to the original site.
