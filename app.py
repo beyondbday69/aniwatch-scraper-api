@@ -184,7 +184,57 @@ def get_sources(server_id: str):
 
 @app.get("/tester", response_class=HTMLResponse)
 def tester():
-    return HTMLResponse("<html><body style='background:#111;color:#eee'><input id=u style='width:80%'><button onclick='f.src=u.value'>Go</button><iframe id=f style='width:100%;height:90%;border:none' allowfullscreen></iframe></body></html>")
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Iframe Tester</title></head>
+    <body style="background:#111; color:#eee; font-family:sans-serif; margin:0; padding:20px; display:flex; flex-direction:column; height:100vh; box-sizing:border-box;">
+        <div>
+            <h2 style="margin-top:0;">MegaPlay & Iframe Tester</h2>
+            <input type="text" id="url" style="width:80%; padding:10px; border-radius:5px; border:none;" placeholder="https://megaplay.buzz/stream/s-2/162345/sub">
+            <button onclick="document.getElementById('f').src=document.getElementById('url').value" style="padding:10px 20px; border-radius:5px; border:none; background:#ffdd95; color:#000; cursor:pointer; font-weight:bold;">Load</button>
+        </div>
+        <div style="display:flex; flex:1; gap:20px; margin-top:20px;">
+            <iframe id="f" style="flex:2; border:none; background:#000;" allowfullscreen></iframe>
+            <div style="flex:1; background:#222; padding:15px; border-radius:5px; overflow-y:auto; display:flex; flex-direction:column;">
+                <h3 style="margin-top:0;">MegaPlay Event Logs</h3>
+                <button onclick="document.getElementById('logs').innerHTML=''" style="padding:5px 10px; margin-bottom:10px; align-self:flex-start; cursor:pointer;">Clear Logs</button>
+                <div id="logs" style="font-family:monospace; font-size:12px; white-space:pre-wrap; word-break:break-all;"></div>
+            </div>
+        </div>
+        <script>
+            function log(msg, color) {
+                const logs = document.getElementById('logs');
+                const div = document.createElement('div');
+                div.style.color = color || '#0f0';
+                div.style.marginBottom = '5px';
+                div.style.borderBottom = '1px dotted #444';
+                div.style.paddingBottom = '5px';
+                
+                const time = new Date().toLocaleTimeString();
+                div.innerText = `[${time}] ` + (typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg);
+                logs.prepend(div);
+            }
+            
+            window.addEventListener('message', function (e) {
+                let data = e.data;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (err) { return; }
+                }
+                
+                // Filter for MegaPlay events
+                if (data.channel === "megacloud" || data.type === "watching-log" || data.event) {
+                    let color = '#8DFFBF'; // light green
+                    if (data.event === 'error') color = '#ff4d4d'; // red
+                    if (data.event === 'complete') color = '#FFF892'; // yellow
+                    log(data, color);
+                }
+            });
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 if __name__ == "__main__":
     import uvicorn
