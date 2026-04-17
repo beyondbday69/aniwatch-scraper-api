@@ -76,9 +76,12 @@ def parse_items(html):
             
             url_tag = item.find('a', class_='film-poster-ahref')
             url = url_tag.get('href') if url_tag else ""
-            # Extract anime_id from URL like /watch/jujutsu-kaisen-20401 or /jujutsu-kaisen-534
-            anime_id_match = re.search(r'-(\d+)$', url.split('?')[0])
-            anime_id = anime_id_match.group(1) if anime_id_match else ""
+            # Extract full slug from URL like /watch/jujutsu-kaisen-20401 or /jujutsu-kaisen-534
+            # We want "jujutsu-kaisen-20401"
+            slug = url.split('?')[0].strip('/')
+            if slug.startswith('watch/'):
+                slug = slug.replace('watch/', '', 1)
+            anime_id = slug
             
             if url and url.startswith('/'):
                 url = BASE_URL + url
