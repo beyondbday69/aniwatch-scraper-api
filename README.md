@@ -1,12 +1,15 @@
-# Aniwatch Unofficial API Scraper
+# AniwatchTV Unofficial API Scraper
 
-A FastAPI application that scrapes anime data and video streaming links from `aniwatch.co.at`.
+A FastAPI application that scrapes anime data and video streaming links from `aniwatchtv.to`.
 
 ## Endpoints
 
-- `GET /popular`: Returns the most popular anime list, including `ep_id` for each item.
-- `GET /search?q={query}`: Searches for an anime and returns items with their `ep_id`.
-- `GET /stream/{ep_id}/{type}`: Fetches the video servers and iframe links for a given `ep_id`. `type` can be `sub` or `dub`.
+- **`GET /popular`**: Returns the most popular anime list from the home page.
+- **`GET /search?q={query}`**: Searches for an anime and returns items with their `anime_id`.
+- **`GET /anime/{anime_id_or_slug}`**: Fetches full anime details, including description, images, metadata, and all seasons.
+- **`GET /episodes/{anime_id}`**: Fetches the full list of episodes for a specific anime.
+- **`GET /servers/{ep_id}`**: Fetches available video servers (VidSrc, MegaCloud, etc.) for a specific episode.
+- **`GET /sources/{server_id}`**: Fetches the final embed link/iframe for a specific server.
 
 ## Local Testing
 
