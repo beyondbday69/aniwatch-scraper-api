@@ -128,15 +128,37 @@ def search(q: str = Query(..., min_length=1)):
 @app.get("/anime/{anime_id}")
 def get_anime_details(anime_id: str):
     try:
-        # Some anime IDs might be slugs, but usually they are just numeric.
-        # If it's a numeric ID, we can often access it via a generic URL or search.
-        # However, aniwatch usually needs the slug. 
-        # For simplicity, if anime_id is just digits, we might need to find the slug first or hope for a redirect.
-        # Actually, let's try to fetch it directly if it's a slug, or search for it if it's an ID.
-        
-        # We will assume anime_id provided is the slug or part of the URL containing the ID.
-        url = f"{BASE_URL}/{anime_id}" if not anime_id.isdigit() else f"{BASE_URL}/anime-redirect?id={anime_id}"
-        # Since I don't know the exact redirect URL, let's assume the user provides the slug like "rezero-season-4-20569"
+        # If anime_id is numeric, we need to resolve it to a slug
+        if anime_id.isdigit():
+            resolved_slug = ""
+            pattern = re.compile(rf"-{anime_id}$")
+            
+            # Search up to 3 pages to find the slug
+            for page in range(1, 4):
+                search_url = f"{BASE_URL}/search?keyword={anime_id}&page={page}"
+                r_search = requests.get(search_url, headers=HEADERS, timeout=10)
+                soup_search = BeautifulSoup(r_search.text, 'html.parser')
+                
+                for a in soup_search.find_all('a', href=True):
+                    href = a['href'].split('?')[0]
+                    if pattern.search(href):
+                        resolved_slug = href.lstrip('/')
+                        break
+                if resolved_slug:
+                    break
+            
+            if resolved_slug:
+                anime_id = resolved_slug
+            else:
+                # Fallback: try tooltip AJAX if search fails
+                r_tooltip = requests.get(f"{BASE_URL}/ajax/v2/anime/tooltip/{anime_id}", headers=HEADERS, timeout=10)
+                if r_tooltip.status_code == 200:
+                    t_data = r_tooltip.json()
+                    if t_data.get("status"):
+                        t_soup = BeautifulSoup(t_data.get("html", ""), "html.parser")
+                        t_a = t_soup.find("a", href=True)
+                        if t_a:
+                            anime_id = t_a["href"].lstrip('/')
         
         r = requests.get(f"{BASE_URL}/{anime_id}", headers=HEADERS, timeout=10)
         r.raise_for_status()
