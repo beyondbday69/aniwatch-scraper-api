@@ -2,11 +2,10 @@ from fastapi import FastAPI, HTTPException, Query, Path
 import requests
 from bs4 import BeautifulSoup
 import re
-import base64
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Literal
 
-app = FastAPI(title="Aniwatch Unofficial API")
+app = FastAPI(title="AniwatchTV Unofficial API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,52 +20,42 @@ HEADERS = {
     "X-Requested-With": "XMLHttpRequest"
 }
 
-BASE_URL = "https://aniwatch.co.at"
+BASE_URL = "https://aniwatchtv.to"
 
 def parse_items(html):
     soup = BeautifulSoup(html, 'html.parser')
     items = []
-    
-    # Use fallback class if flw-item isn't exactly matched
     flw_items = soup.find_all('div', class_=re.compile(r'flw-item'))
     
     for item in flw_items:
         try:
-            title_tag = item.find('h3', class_='film-name')
-            if not title_tag:
-                title_tag = item.find('h2', class_='film-name')
-            
+            title_tag = item.find('h3', class_='film-name') or item.find('h2', class_='film-name')
             title = title_tag.text.strip() if title_tag else "Unknown"
             
             url_tag = item.find('a', class_='film-poster-ahref')
             url = url_tag.get('href') if url_tag else ""
-            ep_id = url_tag.get('data-id') if url_tag else ""
+            # Extract anime_id from URL like /watch/jujutsu-kaisen-20401
+            anime_id_match = re.search(r'-(\d+)$', url.split('?')[0])
+            anime_id = anime_id_match.group(1) if anime_id_match else ""
             
             if url and url.startswith('/'):
                 url = BASE_URL + url
                 
             img_tag = item.find('img', class_='film-poster-img')
-            img_url = ""
-            if img_tag:
-                img_url = img_tag.get('data-src') or img_tag.get('src') or ""
+            img_url = img_tag.get('data-src') or img_tag.get('src') or "" if img_tag else ""
                 
-            # sub/dub/eps counts
             tick_sub = item.find('div', class_='tick-sub')
             tick_dub = item.find('div', class_='tick-dub')
             tick_eps = item.find('div', class_='tick-eps')
             
-            sub = tick_sub.text.strip() if tick_sub else None
-            dub = tick_dub.text.strip() if tick_dub else None
-            eps = tick_eps.text.strip() if tick_eps else None
-            
             items.append({
-                "ep_id": ep_id,
+                "anime_id": anime_id,
                 "title": title,
                 "url": url,
                 "image": img_url,
-                "sub": sub,
-                "dub": dub,
-                "episodes": eps
+                "sub": tick_sub.text.strip() if tick_sub else None,
+                "dub": tick_dub.text.strip() if tick_dub else None,
+                "episodes": tick_eps.text.strip() if tick_eps else None
             })
         except Exception:
             continue
@@ -74,91 +63,73 @@ def parse_items(html):
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Aniwatch Unofficial API"}
+    return {"message": "Welcome to the AniwatchTV Unofficial API"}
 
 @app.get("/popular")
 def get_popular():
     try:
-        r = requests.get(f"{BASE_URL}/most-popular-anime/", headers=HEADERS, timeout=10)
+        r = requests.get(f"{BASE_URL}/home", headers=HEADERS, timeout=10)
         r.raise_for_status()
-        items = parse_items(r.text)
-        return {"results": items}
+        return {"results": parse_items(r.text)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
 def search(q: str = Query(..., min_length=1)):
     try:
-        r = requests.get(f"{BASE_URL}/?s={q}", headers=HEADERS, timeout=10)
+        r = requests.get(f"{BASE_URL}/search?keyword={q}", headers=HEADERS, timeout=10)
         r.raise_for_status()
-        items = parse_items(r.text)
-        return {"query": q, "results": items}
+        return {"query": q, "results": parse_items(r.text)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/stream/{ep_id}/{type}")
-def get_stream(
-    ep_id: str = Path(..., description="Episode ID extracted from search or popular endpoints"),
-    type: Literal["sub", "dub", "raw"] = Path(..., description="Type of stream (sub or dub)")
-):
+@app.get("/episodes/{anime_id}")
+def get_episodes(anime_id: str):
     try:
-        # 1. Fetch Episode Page using WordPress post ID format to automatically resolve the URL
-        url = f"{BASE_URL}/?p={ep_id}"
-        r = requests.get(url, headers=HEADERS, timeout=10, allow_redirects=True)
+        r = requests.get(f"{BASE_URL}/ajax/v2/episode/list/{anime_id}", headers=HEADERS, timeout=10)
         r.raise_for_status()
-        html = r.text
+        data = r.json()
+        soup = BeautifulSoup(data.get("html", ""), 'html.parser')
+        ep_items = soup.find_all('a', class_='ep-item')
         
-        # 2. Extract Nonce
-        nonce_match = re.search(r'var hianime_ep_ajax = \{"ajax_url":"[^"]+","episode_nonce":"([^"]+)"\}', html)
-        if not nonce_match:
-            raise Exception("Could not find episode nonce")
-        nonce = nonce_match.group(1)
-        
-        # 3. Request Servers
-        ajax_url = f"{BASE_URL}/wp-admin/admin-ajax.php"
-        payload = {
-            'action': 'hianime_episode_servers',
-            'episode_id': ep_id,
-            'nonce': nonce
-        }
-        res = requests.post(ajax_url, data=payload, headers=HEADERS, timeout=10)
-        res_data = res.json()
-        
-        # 4. Parse servers HTML
-        server_html = res_data.get("html", "")
-        soup_servers = BeautifulSoup(server_html, "html.parser")
-        server_items = soup_servers.find_all('div', class_='server-item')
+        episodes = []
+        for ep in ep_items:
+            episodes.append({
+                "ep_id": ep.get('data-id'),
+                "number": ep.get('data-number'),
+                "title": ep.get('title'),
+                "url": BASE_URL + ep.get('href')
+            })
+        return {"anime_id": anime_id, "episodes": episodes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/servers/{ep_id}")
+def get_servers(ep_id: str):
+    try:
+        r = requests.get(f"{BASE_URL}/ajax/v2/episode/servers?episodeId={ep_id}", headers=HEADERS, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        soup = BeautifulSoup(data.get("html", ""), 'html.parser')
+        server_items = soup.find_all('div', class_='server-item')
         
         servers = []
         for s in server_items:
-            server_name = s.get('data-server-name') or s.text.strip()
-            server_type = s.get('data-type') # sub or dub
-            
-            data_hash = s.get('data-hash')
-            if data_hash:
-                try:
-                    video_url = base64.b64decode(data_hash).decode('utf-8')
-                    if server_type == type:
-                        servers.append({
-                            "name": server_name,
-                            "type": server_type,
-                            "url": video_url
-                        })
-                except:
-                    pass
-                    
-        if not servers:
-            raise HTTPException(status_code=404, detail=f"No '{type}' servers found for episode {ep_id}")
-        
-        return {
-            "episode_id": ep_id,
-            "type": type,
-            "download_link": res_data.get("dl_link"),
-            "servers": servers
-        }
-        
-    except HTTPException:
-        raise
+            servers.append({
+                "server_id": s.get('data-id'),
+                "name": s.text.strip(),
+                "type": s.get('data-type') # sub or dub
+            })
+        return {"episode_id": ep_id, "servers": servers}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/sources/{server_id}")
+def get_sources(server_id: str):
+    try:
+        r = requests.get(f"{BASE_URL}/ajax/v2/episode/sources?id={server_id}", headers=HEADERS, timeout=10)
+        r.raise_for_status()
+        return r.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
