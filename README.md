@@ -21,6 +21,7 @@ FastAPI-based scraper and API for `aniwatchtv.to`. Fetches anime details, search
 | `GET /anime/{id_or_slug}` | Detailed metadata, description, and season list. |
 | `GET /episodes/{anime_id}` | Full episode list with IDs for a series. |
 | `GET /servers/{ep_id}` | List of available servers (VidSrc, MegaCloud, etc.). |
+| `GET /megaplay/{ep_id}` | Returns direct megaplay.buzz iframe URLs (sub/dub/raw). |
 | `GET /sources/{server_id}` | Final embed link/iframe URL. |
 | `GET /tester` | Web interface to test iframe URLs. |
 

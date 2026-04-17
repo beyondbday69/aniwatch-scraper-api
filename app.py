@@ -8,261 +8,127 @@ from typing import Literal
 
 app = FastAPI(title="AniwatchTV Unofficial API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "X-Requested-With": "XMLHttpRequest"
-}
-
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+AJAX_HEADERS = {**HEADERS, "X-Requested-With": "XMLHttpRequest"}
 BASE_URL = "https://aniwatchtv.to"
 
-@app.get("/tester", response_class=HTMLResponse)
-def iframe_tester():
-    html_content = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Aniwatch API - Iframe Tester</title>
-        <style>
-            body { font-family: sans-serif; margin: 20px; background: #1a1a1a; color: white; }
-            .container { max-width: 1000px; margin: 0 auto; }
-            input { width: 80%; padding: 10px; border-radius: 5px; border: none; }
-            button { padding: 10px 20px; border-radius: 5px; border: none; background: #ffdd95; color: black; cursor: pointer; font-weight: bold; }
-            .iframe-container { margin-top: 20px; background: black; border: 2px solid #333; height: 600px; position: relative; }
-            iframe { width: 100%; height: 100%; border: none; }
-            .hint { color: #888; margin-top: 10px; font-size: 0.9em; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Aniwatch Iframe Tester</h1>
-            <p>Paste the "link" from /sources/{id} below to test if it loads correctly.</p>
-            <input type="text" id="urlInput" placeholder="https://megacloud.blog/embed-2/v3/e-1/...">
-            <button onclick="testUrl()">Test URL</button>
-            <div class="hint">Note: Some servers (like VidSrc) may have X-Frame-Options that prevent loading in a standard iframe.</div>
-            <div class="iframe-container">
-                <iframe id="testFrame" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-            </div>
-        </div>
-        <script>
-            function testUrl() {
-                const url = document.getElementById('urlInput').value;
-                if(url) {
-                    document.getElementById('testFrame').src = url;
-                }
-            }
-        </script>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=html_content)
+def get_slug(url):
+    if not url: return ""
+    return url.split('?')[0].strip('/').replace('watch/', '', 1)
 
-def parse_items(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    items = []
-    flw_items = soup.find_all('div', class_=re.compile(r'flw-item'))
-    
-    for item in flw_items:
-        try:
-            title_tag = item.find('h3', class_='film-name') or item.find('h2', class_='film-name')
-            title = title_tag.text.strip() if title_tag else "Unknown"
-            
-            url_tag = item.find('a', class_='film-poster-ahref')
-            url = url_tag.get('href') if url_tag else ""
-            # Extract full slug from URL like /watch/jujutsu-kaisen-20401 or /jujutsu-kaisen-534
-            # We want "jujutsu-kaisen-20401"
-            slug = url.split('?')[0].strip('/')
-            if slug.startswith('watch/'):
-                slug = slug.replace('watch/', '', 1)
-            anime_id = slug
-            
-            if url and url.startswith('/'):
-                url = BASE_URL + url
-                
-            img_tag = item.find('img', class_='film-poster-img')
-            img_url = img_tag.get('data-src') or img_tag.get('src') or "" if img_tag else ""
-                
-            tick_sub = item.find('div', class_='tick-sub')
-            tick_dub = item.find('div', class_='tick-dub')
-            tick_eps = item.find('div', class_='tick-eps')
-            
-            items.append({
-                "anime_id": anime_id,
-                "title": title,
-                "url": url,
-                "image": img_url,
-                "sub": tick_sub.text.strip() if tick_sub else None,
-                "dub": tick_dub.text.strip() if tick_dub else None,
-                "episodes": tick_eps.text.strip() if tick_eps else None
-            })
-        except Exception:
-            continue
-    return items
+def parse_card(el):
+    t = el.find(['h3', 'h2', 'div'], class_=['film-name', 'film-title']) or el.find('a', title=True)
+    a = el.find('a', href=True)
+    i = el.find('img')
+    ts = el.find('div', class_='tick-sub')
+    td = el.find('div', class_='tick-dub')
+    te = el.find('div', class_='tick-eps')
+    return {
+        "title": t.get('title') or t.get_text().strip() if t else "Unknown",
+        "anime_id": get_slug(a['href']) if a else "",
+        "image": i.get('data-src') or i.get('src') or "" if i else "",
+        "sub": ts.get_text().strip() if ts else None,
+        "dub": td.get_text().strip() if td else None,
+        "episodes": te.get_text().strip() if te else None
+    }
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the AniwatchTV Unofficial API"}
+@app.get("/home")
+def get_home():
+    try:
+        r = requests.get(f"{BASE_URL}/home", headers=HEADERS)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        data = {"trending": [], "top_airing": [], "most_popular": [], "most_favorite": [], "latest_completed": [], "latest_episodes": []}
+        
+        for item in soup.select("#trending-home .swiper-slide"):
+            data["trending"].append(parse_card(item))
+            
+        for h in soup.select(".anif-block-header"):
+            k = h.get_text().strip().lower().replace(" ", "_")
+            if k in data:
+                ul = h.find_next_sibling("div", class_="anif-block-ul")
+                if ul:
+                    for li in ul.find_all("li"):
+                        data[k].append(parse_card(li))
+                        
+        for item in soup.find_all('div', class_=re.compile(r'flw-item')):
+            data["latest_episodes"].append(parse_card(item))
+            
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/popular")
 def get_popular():
-    try:
-        r = requests.get(f"{BASE_URL}/home", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        return {"results": parse_items(r.text)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    r = requests.get(f"{BASE_URL}/home", headers=HEADERS)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    return {"results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
 
 @app.get("/search")
-def search(q: str = Query(..., min_length=1)):
-    try:
-        r = requests.get(f"{BASE_URL}/search?keyword={q}", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        return {"query": q, "results": parse_items(r.text)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def search(q: str = Query(...)):
+    r = requests.get(f"{BASE_URL}/search?keyword={q}", headers=HEADERS)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    return {"results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
 
 @app.get("/anime/{anime_id}")
-def get_anime_details(anime_id: str):
-    try:
-        # If anime_id is numeric, we need to resolve it to a slug
-        if anime_id.isdigit():
-            resolved_slug = ""
-            pattern = re.compile(rf"-{anime_id}$")
-            
-            # Search up to 3 pages to find the slug
-            for page in range(1, 4):
-                search_url = f"{BASE_URL}/search?keyword={anime_id}&page={page}"
-                r_search = requests.get(search_url, headers=HEADERS, timeout=10)
-                soup_search = BeautifulSoup(r_search.text, 'html.parser')
-                
-                for a in soup_search.find_all('a', href=True):
-                    href = a['href'].split('?')[0]
-                    if pattern.search(href):
-                        resolved_slug = href.lstrip('/')
-                        break
-                if resolved_slug:
-                    break
-            
-            if resolved_slug:
-                anime_id = resolved_slug
-            else:
-                # Fallback: try tooltip AJAX if search fails
-                r_tooltip = requests.get(f"{BASE_URL}/ajax/v2/anime/tooltip/{anime_id}", headers=HEADERS, timeout=10)
-                if r_tooltip.status_code == 200:
-                    t_data = r_tooltip.json()
-                    if t_data.get("status"):
-                        t_soup = BeautifulSoup(t_data.get("html", ""), "html.parser")
-                        t_a = t_soup.find("a", href=True)
-                        if t_a:
-                            anime_id = t_a["href"].lstrip('/')
-        
-        r = requests.get(f"{BASE_URL}/{anime_id}", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, 'html.parser')
-        
-        title = soup.find('h2', class_='film-name')
-        description = soup.find('div', class_='film-description')
-        img = soup.find('img', class_='film-poster-img')
-        
-        # Details
-        details = {}
-        anisc_info = soup.find('div', class_='anisc-info')
-        if anisc_info:
-            for item in anisc_info.find_all('div', class_='item'):
-                text = item.text.strip()
-                if ':' in text:
-                    key, val = text.split(':', 1)
-                    details[key.strip().lower()] = val.strip()
-
-        # Seasons
-        seasons = []
-        os_list = soup.find('div', class_='os-list')
-        if os_list:
-            for a in os_list.find_all('a'):
-                s_title = a.find('div', class_='title').text.strip() if a.find('div', class_='title') else ""
-                s_url = a.get('href')
-                s_id_match = re.search(r'-(\d+)$', s_url.split('?')[0])
-                s_id = s_id_match.group(1) if s_id_match else ""
-                seasons.append({
-                    "title": s_title,
-                    "url": BASE_URL + s_url,
-                    "anime_id": s_id,
-                    "is_active": 'active' in a.get('class', [])
-                })
-
-        return {
-            "anime_id": anime_id,
-            "title": title.text.strip() if title else "Unknown",
-            "description": description.text.strip() if description else "",
-            "image": img.get('src') if img else "",
-            "details": details,
-            "seasons": seasons
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def get_anime(anime_id: str):
+    if anime_id.isdigit():
+        s = BeautifulSoup(requests.get(f"{BASE_URL}/search?keyword={anime_id}", headers=HEADERS).text, 'html.parser')
+        p = re.compile(rf"-{anime_id}$")
+        for a in s.find_all('a', href=True):
+            h = a['href'].split('?')[0]
+            if p.search(h): anime_id = h.lstrip('/'); break
+    r = requests.get(f"{BASE_URL}/{anime_id}", headers=HEADERS)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    details = {}
+    info = soup.find('div', class_='anisc-info')
+    if info:
+        for item in info.find_all('div', class_='item'):
+            text = item.get_text().strip()
+            if ':' in text:
+                k, v = text.split(':', 1)
+                details[k.strip().lower()] = v.strip()
+    return {
+        "anime_id": anime_id,
+        "title": soup.find('h2', class_='film-name').get_text().strip() if soup.find('h2', class_='film-name') else "Unknown",
+        "description": soup.find('div', class_='film-description').get_text().strip() if soup.find('div', class_='film-description') else "",
+        "image": soup.find('img', class_='film-poster-img').get('src') if soup.find('img', class_='film-poster-img') else "",
+        "details": details,
+        "seasons": [{"title": a.find('div', class_='title').get_text().strip(), "anime_id": get_slug(a.get('href'))} for a in soup.select(".os-list a")] if soup.select(".os-list a") else []
+    }
 
 @app.get("/episodes/{anime_id}")
 def get_episodes(anime_id: str):
-    try:
-        # If anime_id is a slug, extract the numeric ID
-        if not anime_id.isdigit():
-            match = re.search(r'-(\d+)$', anime_id)
-            if match:
-                anime_id = match.group(1)
-        
-        r = requests.get(f"{BASE_URL}/ajax/v2/episode/list/{anime_id}", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        soup = BeautifulSoup(data.get("html", ""), 'html.parser')
-        ep_items = soup.find_all('a', class_='ep-item')
-        
-        episodes = []
-        for ep in ep_items:
-            episodes.append({
-                "ep_id": ep.get('data-id'),
-                "number": ep.get('data-number'),
-                "title": ep.get('title'),
-                "url": BASE_URL + ep.get('href')
-            })
-        return {"anime_id": anime_id, "episodes": episodes}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    if not anime_id.isdigit():
+        m = re.search(r'-(\d+)$', anime_id)
+        if m: anime_id = m.group(1)
+    r = requests.get(f"{BASE_URL}/ajax/v2/episode/list/{anime_id}", headers=AJAX_HEADERS)
+    s = BeautifulSoup(r.json()["html"], 'html.parser')
+    return {"episodes": [{"ep_id": a["data-id"], "number": a["data-number"], "title": a["title"]} for a in s.find_all("a", class_="ep-item")]}
 
 @app.get("/servers/{ep_id}")
 def get_servers(ep_id: str):
-    try:
-        r = requests.get(f"{BASE_URL}/ajax/v2/episode/servers?episodeId={ep_id}", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-        soup = BeautifulSoup(data.get("html", ""), 'html.parser')
-        server_items = soup.find_all('div', class_='server-item')
-        
-        servers = []
-        for s in server_items:
-            servers.append({
-                "server_id": s.get('data-id'),
-                "name": s.text.strip(),
-                "type": s.get('data-type') # sub or dub
-            })
-        return {"episode_id": ep_id, "servers": servers}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    r = requests.get(f"{BASE_URL}/ajax/v2/episode/servers?episodeId={ep_id}", headers=AJAX_HEADERS)
+    s = BeautifulSoup(r.json()["html"], 'html.parser')
+    return {"servers": [{"server_id": d["data-id"], "name": d.get_text().strip(), "type": d["data-type"]} for d in s.find_all("div", class_="server-item")]}
+
+@app.get("/megaplay/{ep_id}")
+def get_megaplay(ep_id: str):
+    return {
+        "episode_id": ep_id,
+        "sub": f"https://megaplay.buzz/stream/s-2/{ep_id}/sub",
+        "dub": f"https://megaplay.buzz/stream/s-2/{ep_id}/dub",
+        "raw": f"https://megaplay.buzz/stream/s-2/{ep_id}/raw"
+    }
 
 @app.get("/sources/{server_id}")
 def get_sources(server_id: str):
-    try:
-        r = requests.get(f"{BASE_URL}/ajax/v2/episode/sources?id={server_id}", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return requests.get(f"{BASE_URL}/ajax/v2/episode/sources?id={server_id}", headers=AJAX_HEADERS).json()
+
+@app.get("/tester", response_class=HTMLResponse)
+def tester():
+    return HTMLResponse("<html><body style='background:#111;color:#eee'><input id=u style='width:80%'><button onclick='f.src=u.value'>Go</button><iframe id=f style='width:100%;height:90%;border:none' allowfullscreen></iframe></body></html>")
 
 if __name__ == "__main__":
     import uvicorn
