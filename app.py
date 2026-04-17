@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi.responses import HTMLResponse
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -21,6 +22,47 @@ HEADERS = {
 }
 
 BASE_URL = "https://aniwatchtv.to"
+
+@app.get("/tester", response_class=HTMLResponse)
+def iframe_tester():
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Aniwatch API - Iframe Tester</title>
+        <style>
+            body { font-family: sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+            .container { max-width: 1000px; margin: 0 auto; }
+            input { width: 80%; padding: 10px; border-radius: 5px; border: none; }
+            button { padding: 10px 20px; border-radius: 5px; border: none; background: #ffdd95; color: black; cursor: pointer; font-weight: bold; }
+            .iframe-container { margin-top: 20px; background: black; border: 2px solid #333; height: 600px; position: relative; }
+            iframe { width: 100%; height: 100%; border: none; }
+            .hint { color: #888; margin-top: 10px; font-size: 0.9em; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Aniwatch Iframe Tester</h1>
+            <p>Paste the "link" from /sources/{id} below to test if it loads correctly.</p>
+            <input type="text" id="urlInput" placeholder="https://megacloud.blog/embed-2/v3/e-1/...">
+            <button onclick="testUrl()">Test URL</button>
+            <div class="hint">Note: Some servers (like VidSrc) may have X-Frame-Options that prevent loading in a standard iframe.</div>
+            <div class="iframe-container">
+                <iframe id="testFrame" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            </div>
+        </div>
+        <script>
+            function testUrl() {
+                const url = document.getElementById('urlInput').value;
+                if(url) {
+                    document.getElementById('testFrame').src = url;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 def parse_items(html):
     soup = BeautifulSoup(html, 'html.parser')
