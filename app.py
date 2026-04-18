@@ -67,6 +67,80 @@ def parse_card(el):
         "description": description
     }
 
+@app.get("/", response_class=HTMLResponse)
+def read_root():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>AniwatchTV Unofficial API</title>
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; background: #0f0f0f; color: #eee; }
+            .container { max-width: 900px; margin: 40px auto; padding: 20px; background: #181818; border-radius: 8px; border: 1px solid #333; }
+            h1 { color: #ffdd95; border-bottom: 2px solid #ffdd95; padding-bottom: 10px; }
+            h2 { color: #ffdd95; margin-top: 30px; }
+            code { background: #222; padding: 2px 6px; border-radius: 4px; color: #ffdd95; font-family: monospace; }
+            .endpoint { margin-bottom: 20px; padding: 15px; background: #222; border-radius: 5px; }
+            .method { font-weight: bold; color: #2ecc71; margin-right: 10px; }
+            .path { font-weight: bold; color: #3498db; }
+            .desc { margin-top: 5px; color: #ccc; }
+            a { color: #ffdd95; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            .btn { display: inline-block; padding: 10px 20px; background: #ffdd95; color: black; border-radius: 5px; font-weight: bold; margin-top: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>AniwatchTV Unofficial API</h1>
+            <p>Welcome to the unofficial scraper API for AniwatchTV. Use the endpoints below to fetch data.</p>
+            
+            <a href="/tester" class="btn">Open Iframe Tester</a>
+
+            <h2>Core Endpoints</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/home</span>
+                <div class="desc">Fetches everything from the homepage: Spotlights, Trending, Genres, and Latest Episodes.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/search?q={query}</span>
+                <div class="desc">Search for anime by title. Returns full slugs as <code>anime_id</code>.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/anime/{id_or_slug}</span>
+                <div class="desc">Get full details, metadata, and season list for a specific anime.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/episodes/{anime_id}</span>
+                <div class="desc">Get all episodes and their internal IDs for a series.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/servers/{ep_id}</span>
+                <div class="desc">List available streaming servers (VidSrc, MegaCloud, etc.) for an episode.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/sources/{server_id}</span>
+                <div class="desc">Get the final iframe embed link from an internal server ID.</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="method">GET</span><span class="path">/megaplay/{ep_id}</span>
+                <div class="desc">Direct utility to get megaplay.buzz iframe URLs (sub/dub/raw).</div>
+            </div>
+
+            <p style="margin-top: 40px; font-size: 12px; color: #666;">
+                Note: This API is for educational purposes. All content rights belong to the original owners.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
 @app.get("/home")
 def get_home():
     try:
