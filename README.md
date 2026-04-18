@@ -1,33 +1,20 @@
-# AniwatchTV API (Unofficial)
+# AniwatchTV Unofficial API
 
-FastAPI-based scraper and API for `aniwatchtv.to`. Fetches anime details, search results, episode lists, and streaming sources.
-
-## Live Demo
-- **API Base:** [https://aniwatch-scraper-kappa.vercel.app](https://aniwatch-scraper-kappa.vercel.app)
-- **Iframe Tester:** [/tester](https://aniwatch-scraper-kappa.vercel.app/tester)
-
-## Features
-- **Slug Resolution:** Automatically resolves numeric IDs (e.g., `37`) to full slugs (`monster-37`).
-- **AJAX Support:** Mimics official site requests to bypass dynamic loading.
-- **Iframe Tester:** Built-in tool to verify streaming links.
-- **Interactive UI:** Full website at `/explore` with Hero section, detail pages, and player.
-- **Redirect Shield:** (Always ON by default) Blocks intrusive ads and popups using iframe sandboxing.
-- **Auto Next:** Automatically jumps to the next episode when playback finishes.
-- **Sub/Dub Toggle:** Easily switch between different audio/subtitle versions.
+A clean, JSON-only FastAPI application that scrapes anime data, metadata, and streaming sources from `aniwatchtv.to`.
 
 ## API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /home` | Fetches trending, top airing, most popular, most favorite, latest completed, and latest episodes. |
-| `GET /popular` | Top trending anime on home page. |
-| `GET /search?q={query}` | Search anime by title or ID. Returns full slugs. |
-| `GET /anime/{id_or_slug}` | Detailed metadata, description, and season list. |
-| `GET /episodes/{anime_id}` | Full episode list with IDs for a series. |
-| `GET /servers/{ep_id}` | List of available servers (VidSrc, MegaCloud, etc.). |
-| `GET /megaplay/{ep_id}` | Returns direct megaplay.buzz iframe URLs (sub/dub/raw). |
-| `GET /sources/{server_id}` | Final embed link/iframe URL. |
-| `GET /tester` | Web interface to test iframe URLs. |
+| `GET /` | API Welcome and endpoint directory. |
+| `GET /home` | Fetches trending, spotlights, genres, and latest episodes. |
+| `GET /search?q={query}` | Search for anime by title. |
+| `GET /anime/{id_or_slug}` | Get full details, metadata, and season list. |
+| `GET /episodes/{anime_id}` | List all episodes for a specific series. |
+| `GET /servers/{ep_id}` | List available streaming servers for an episode. |
+| `GET /sources/{server_id}` | Get final iframe embed links. |
+| `GET /megaplay/{ep_id}` | Direct megaplay.buzz iframe utility links. |
+| `GET /genre/{name}` | Fetch anime list for a specific genre. |
 
 ## Local Setup
 
@@ -49,4 +36,4 @@ vercel --prod
 ```
 
 ## Disclaimer
-This project is for educational purposes only. All content belongs to the original site.
+Educational purposes only.
