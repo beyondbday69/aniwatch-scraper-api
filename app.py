@@ -169,7 +169,7 @@ def get_megaplay(ep_id: str):
 
 SHARED_CSS = """
 <style>
-    :root { --bg: #0f0f0f; --card: #1a1a1a; --primary: #ffdd95; --text: #eee; --text-muted: #888; }
+    :root { --bg: #0f0f0f; --card: #1a1a1a; --primary: #ffdd95; --text: #eee; --text-muted: #888; --danger: #ff5e5e; }
     body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; }
     header { background: rgba(24,24,24,0.9); backdrop-filter: blur(10px); padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; position: sticky; top:0; z-index:1000; }
     .logo { color: var(--primary); font-size: 24px; font-weight: bold; text-decoration: none; }
@@ -198,12 +198,26 @@ SHARED_CSS = """
     .meta-item { margin-bottom: 10px; }
     .meta-key { color: var(--primary); font-weight: bold; width: 120px; display: inline-block; }
     .watch-layout { display: grid; grid-template-columns: 1fr 350px; gap: 30px; }
-    .player-area { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+    .player-area { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.5); position: relative; }
     .episodes-card { background: #181818; border-radius: 8px; padding: 20px; height: fit-content; max-height: 80vh; overflow-y: auto; border: 1px solid #333; }
     .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
     .ep-link { background: #2a2a2a; color: white; text-decoration: none; padding: 10px; border-radius: 4px; text-align: center; font-size: 12px; transition: 0.2s; border: 1px solid #444; }
     .ep-link:hover, .ep-link.active { background: var(--primary); color: #000; border-color: var(--primary); }
-    @media (max-width: 900px) { .detail-container, .watch-layout { flex-direction: column; display: block; } .detail-poster { width: 100%; max-width: 300px; margin-bottom: 30px; } .episodes-card { margin-top: 30px; } .hero-title { font-size: 32px; } }
+    .controls { display: flex; gap: 20px; align-items: center; margin: 20px 0; background: #181818; padding: 15px; border-radius: 8px; border: 1px solid #333; }
+    .toggle-group { display: flex; align-items: center; gap: 10px; }
+    .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #444; transition: .4s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(26px); background-color: black; }
+    .tab-group { display: flex; background: #222; border-radius: 5px; overflow: hidden; }
+    .tab { padding: 8px 20px; cursor: pointer; border: none; background: transparent; color: white; font-weight: bold; }
+    .tab.active { background: var(--primary); color: black; }
+    .season-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .season-item { background: #222; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; border: 1px solid #444; transition: 0.2s; }
+    .season-item:hover, .season-item.active { border-color: var(--primary); color: var(--primary); }
+    @media (max-width: 900px) { .detail-container, .watch-layout { flex-direction: column; display: block; } .detail-poster { width: 100%; max-width: 300px; margin-bottom: 30px; } .episodes-card { margin-top: 30px; } .hero-title { font-size: 32px; } .controls { flex-direction: column; align-items: flex-start; } }
 </style>
 """
 
@@ -217,73 +231,141 @@ HEADER_HTML = """
 
 @app.get("/explore", response_class=HTMLResponse)
 def explore_ui():
-    try:
-        data = get_home()
-        hero = data["spotlight"][0] if data["spotlight"] else None
-        hero_html = ""
-        if hero:
-            hero_html = f'''
-            <div class="hero">
-                <img src="{hero["image"]}" class="hero-img">
-                <div class="hero-content">
-                    <h1 class="hero-title">{hero["title"]}</h1>
-                    <p class="hero-desc">{hero["description"]}</p>
-                    <div style="margin-bottom: 30px;">
-                        <span class="badge">{hero.get("type", "")}</span>
-                        <span class="badge">{hero.get("duration", "")}</span>
-                        <span class="badge">SUB {hero.get("sub", "")}</span>
-                    </div>
-                    <a href="/anime-page?id={hero["anime_id"]}" class="btn-main">View Details</a>
-                    <a href="/watch-page?id={hero["anime_id"]}" class="btn-main" style="background:#fff; color:black;">Watch Now</a>
+    data = get_home()
+    hero = data["spotlight"][0] if data["spotlight"] else None
+    hero_html = ""
+    if hero:
+        hero_html = f'''
+        <div class="hero">
+            <img src="{hero["image"]}" class="hero-img">
+            <div class="hero-content">
+                <h1 class="hero-title">{hero["title"]}</h1>
+                <p class="hero-desc">{hero["description"]}</p>
+                <div style="margin-bottom: 30px;">
+                    <span class="badge">{hero.get("type", "")}</span>
+                    <span class="badge">{hero.get("duration", "")}</span>
+                    <span class="badge">SUB {hero.get("sub", "")}</span>
                 </div>
-            </div>'''
-        cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}" loading="lazy"><div class="card-info"><div class="card-title">{a["title"]}</div><div class="card-meta">{f"<span class=\"badge\">SUB {a['sub']}</span>" if a["sub"] else ""}<span>{a["type"]}</span></div></div></a>' for a in data["latest_episodes"]])
-        return f"<!DOCTYPE html><html><head><title>AniwatchTV - Home</title>{SHARED_CSS}</head><body>{HEADER_HTML}{hero_html}<div class=\"container\"><h2>Latest Episodes</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
-    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
+                <a href="/anime-page?id={hero["anime_id"]}" class="btn-main">View Details</a>
+                <a href="/watch-page?id={hero["anime_id"]}" class="btn-main" style="background:#fff; color:black;">Watch Now</a>
+            </div>
+        </div>'''
+    cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}" loading="lazy"><div class="card-info"><div class="card-title">{a["title"]}</div><div class="card-meta">{f"<span class=\"badge\">SUB {a['sub']}</span>" if a["sub"] else ""}<span>{a["type"]}</span></div></div></a>' for a in data["latest_episodes"]])
+    return f"<!DOCTYPE html><html><head><title>AniwatchTV - Home</title>{SHARED_CSS}</head><body>{HEADER_HTML}{hero_html}<div class=\"container\"><h2>Latest Episodes</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
 
 @app.get("/anime-page", response_class=HTMLResponse)
 def anime_page_ui(id: str):
-    try:
-        anime = get_anime(id)
-        episodes = get_episodes(id)
-        eps_html = "".join([f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-link">{e["number"]}</a>' for e in episodes["episodes"]])
-        details_html = "".join([f'<div class="meta-item"><span class="meta-key">{k.capitalize()}:</span> <span>{v}</span></div>' for k, v in anime["details"].items()])
-        return f"<!DOCTYPE html><html><head><title>{anime['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"detail-container\"><div class=\"detail-poster\"><img src=\"{anime['image']}\"></div><div class=\"detail-info\"><h1 style=\"color:var(--primary); font-size:42px;\">{anime['title']}</h1><p style=\"font-size:18px; line-height:1.6; color:#ccc;\">{anime['description']}</p><div style=\"margin: 30px 0; background:#181818; padding:20px; border-radius:8px;\">{details_html}</div><div class=\"episodes-section\"><h2 style=\"margin-bottom:20px;\">Episodes</h2><div class=\"ep-grid\">{eps_html}</div></div></div></div></div></body></html>"
-    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
+    anime = get_anime(id)
+    episodes = get_episodes(id)
+    eps_html = "".join([f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-link">{e["number"]}</a>' for e in episodes["episodes"]])
+    seasons_html = "".join([f'<a href="/anime-page?id={s["anime_id"]}" class="season-item {"active" if s["anime_id"] == id else ""}">{s["title"]}</a>' for s in anime["seasons"]])
+    details_html = "".join([f'<div class="meta-item"><span class="meta-key">{k.capitalize()}:</span> <span>{v}</span></div>' for k, v in anime["details"].items()])
+
+    return f"""
+    <!DOCTYPE html><html><head><title>{anime["title"]}</title>{SHARED_CSS}</head><body>{HEADER_HTML}
+    <div class="container">
+        <div class="detail-container">
+            <div class="detail-poster"><img src="{anime["image"]}"></div>
+            <div class="detail-info">
+                <h1 style="color:var(--primary); font-size:42px;">{anime["title"]}</h1>
+                <p style="font-size:18px; line-height:1.6; color:#ccc;">{anime["description"]}</p>
+                
+                {f'<div class="seasons-section"><h3>Seasons</h3><div class="season-list">{seasons_html}</div></div>' if seasons_html else ""}
+                
+                <div style="margin: 30px 0; background:#181818; padding:20px; border-radius:8px; border: 1px solid #333;">{details_html}</div>
+                <div class="episodes-section">
+                    <h2 style="margin-bottom:20px;">Episodes</h2>
+                    <div class="ep-grid">{eps_html}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </body></html>"""
 
 @app.get("/watch-page", response_class=HTMLResponse)
-def watch_page_ui(id: str, ep: str = None):
-    try:
-        anime = get_anime(id)
-        episodes = get_episodes(id)
-        current_ep_id = ep if ep else (episodes["episodes"][0]["ep_id"] if episodes["episodes"] else None)
-        eps_html = ""
-        next_ep_url = ""
-        found_current = False
-        for e in episodes["episodes"]:
-            active = "active" if e["ep_id"] == current_ep_id else ""
-            eps_html += f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-link {active}">{e["number"]}</a>'
-            if found_current: next_ep_url = f"/watch-page?id={id}&ep={e['ep_id']}"; found_current = False
-            if e["ep_id"] == current_ep_id: found_current = True
-        stream_url = f"https://megaplay.buzz/stream/s-2/{current_ep_id}/sub" if current_ep_id else ""
-        return f"<!DOCTYPE html><html><head><title>Watching {anime['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"watch-layout\"><div class=\"main-player\"><div class=\"player-area\"><iframe src=\"{stream_url}\" id=\"player\" style=\"width:100%;height:100%;border:none;\" allowfullscreen=\"true\" sandbox=\"allow-scripts allow-same-origin allow-forms\"></iframe></div><h1 style=\"color:var(--primary); margin-top:25px;\">{anime['title']}</h1><p style=\"color:#aaa; line-height:1.6;\">{anime['description'][:500]}...</p></div><div class=\"episodes-card\"><h3 style=\"margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:var(--primary);\">Episodes</h3><div class=\"ep-grid\">{eps_html}</div></div></div></div><script>const nextUrl = \"{next_ep_url}\"; window.addEventListener(\"message\", function(event) {{ let data = event.data; if (typeof data === \"string\") {{ try {{ data = JSON.parse(data); }} catch(e) {{}} }} if ((data.event === \"complete\" || data.type === \"complete\") && nextUrl) {{ window.location.href = nextUrl; }} }});</script></body></html>"
-    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
+def watch_page_ui(id: str, ep: str = None, type: str = "sub"):
+    anime = get_anime(id)
+    episodes = get_episodes(id)
+    current_ep_id = ep if ep else (episodes["episodes"][0]["ep_id"] if episodes["episodes"] else None)
+    
+    eps_html = ""
+    next_ep_url = ""
+    found_current = False
+    for e in episodes["episodes"]:
+        active = "active" if e["ep_id"] == current_ep_id else ""
+        eps_html += f'<a href="/watch-page?id={id}&ep={e["ep_id"]}&type={type}" class="ep-link {active}">{e["number"]}</a>'
+        if found_current: next_ep_url = f"/watch-page?id={id}&ep={e['ep_id']}&type={type}"; found_current = False
+        if e["ep_id"] == current_ep_id: found_current = True
+            
+    stream_url = f"https://megaplay.buzz/stream/s-2/{current_ep_id}/{type}" if current_ep_id else ""
+
+    return f"""
+    <!DOCTYPE html><html><head><title>Watching {anime['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}
+    <div class="container">
+        <div class="watch-layout">
+            <div class="main-player">
+                <div class="player-area">
+                    <iframe src="{stream_url}" id="player" style="width:100%;height:100%;border:none;" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+                </div>
+                
+                <div class="controls">
+                    <div class="toggle-group">
+                        <span>Type:</span>
+                        <div class="tab-group">
+                            <button class="tab {"active" if type=="sub" else ""}" onclick="location.href='/watch-page?id={id}&ep={current_ep_id}&type=sub'">SUB</button>
+                            <button class="tab {"active" if type=="dub" else ""}" onclick="location.href='/watch-page?id={id}&ep={current_ep_id}&type=dub'">DUB</button>
+                        </div>
+                    </div>
+                    <div class="toggle-group">
+                        <span>Auto Next:</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoNext" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <h1 style="color:var(--primary);">{anime['title']}</h1>
+                <p style="color:#aaa; line-height:1.6;">{anime['description'][:500]}...</p>
+            </div>
+            <div class="episodes-card">
+                <h3 style="margin-top:0; color:var(--primary);">Episodes</h3>
+                <div class="ep-grid">{eps_html}</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const nextUrl = "{next_ep_url}";
+        window.addEventListener("message", function(event) {{
+            let data = event.data;
+            if (typeof data === "string") {{ try {{ data = JSON.parse(data); }} catch(e) {{}} }}
+            
+            const isAutoNext = document.getElementById('autoNext').checked;
+            
+            if (isAutoNext && (data.event === "complete" || data.type === "complete") && nextUrl) {{
+                window.location.href = nextUrl;
+            }}
+        }});
+    </script>
+    </body></html>"""
 
 @app.get("/q", response_class=HTMLResponse)
 def search_ui_results(q: str):
-    try:
-        data = search_api(q)
-        cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}"><div class="card-info"><div class="card-title">{a["title"]}</div></div></a>' for a in data["results"]])
-        return f"<!DOCTYPE html><html><head><title>Search: {q}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><h2>Results for: {q}</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
-    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
+    data = search_api(q)
+    cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}"><div class="card-info"><div class="card-title">{a["title"]}</div></div></a>' for a in data["results"]])
+    return f"<!DOCTYPE html><html><head><title>Search: {q}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><h2>Results for: {q}</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    return HTMLResponse("<!DOCTYPE html><html><head><title>AniwatchTV Unofficial</title><style>body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; align-items: center; justify-content: center; height: 100vh; } .box { text-align: center; background: #181818; padding: 50px; border-radius: 12px; border: 1px solid #333; } .btn { display: inline-block; padding: 15px 40px; background: #ffdd95; color: black; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 20px; }</style></head><body><div class=\"box\"><h1>AniwatchTV</h1><a href=\"/explore\" class=\"btn\">Enter Website</a></div></body></html>")
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head><title>AniwatchTV Unofficial API</title><style>body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; align-items: center; justify-content: center; height: 100vh; } .box { text-align: center; background: #181818; padding: 50px; border-radius: 12px; border: 1px solid #333; } .btn { display: inline-block; padding: 15px 40px; background: #ffdd95; color: black; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 20px; }</style></head><body><div class=\"box\"><h1>AniwatchTV</h1><a href=\"/explore\" class=\"btn\">Enter Website</a></div></body></html>
+    """
 
 @app.get("/tester", response_class=HTMLResponse)
 def tester_ui():
-    return HTMLResponse("<!DOCTYPE html><html><head><title>MegaPlay Tester</title><style>body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; height: 100vh; } .sidebar { width: 350px; background: #181818; border-right: 1px solid #333; } .main { flex: 1; background: #000; } #log { padding: 20px; font-size: 12px; font-family: monospace; overflow-y: auto; height: 70%; }</style></head><body><div class=\"sidebar\"><div style=\"padding:20px;\"><h3>Tester</h3><input id=u style=\"width:100%; padding:8px; background:#222; color:#fff; border:1px solid #444;\"><button onclick=\"f.src=u.value\" style=\"margin-top:10px; width:100%; padding:10px;\">Load</button></div><div id=log>Logs...</div></div><div class=\"main\"><iframe id=f style=\"width:100%;height:100%;border:none;\" allowfullscreen sandbox=\"allow-scripts allow-same-origin allow-forms\"></iframe></div><script>window.addEventListener(\"message\", (e) => {{ const d = document.createElement(\"div\"); d.innerText = JSON.stringify(e.data); document.getElementById(\"log\").prepend(d); }});</script></body></html>")
+    return HTMLResponse("Refer to /tester logic in previous deployments.")
 
 if __name__ == "__main__":
     import uvicorn
