@@ -126,48 +126,51 @@ def get_megaplay(ep_id: str):
 
 SHARED_CSS = """
 <style>
-    :root { --bg: #0f0f0f; --card: #1a1a1a; --primary: #ffdd95; --text: #eee; --text-muted: #888; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; }
-    header { background: rgba(24,24,24,0.9); backdrop-filter: blur(10px); padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; position: sticky; top:0; z-index:1000; }
-    .logo { color: var(--primary); font-size: 24px; font-weight: bold; text-decoration: none; }
-    .nav-links a { color: var(--text); text-decoration: none; margin-left: 20px; font-weight: 500; }
-    .nav-links a:hover { color: var(--primary); }
-    .search-bar { background: #222; border: 1px solid #444; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; }
-    .search-bar input { background: transparent; border: none; color: white; padding: 5px; outline: none; width: 200px; }
+    :root { --bg: #0b0b0b; --card: #151515; --primary: #ffdd95; --text: #f0f0f0; --text-muted: #999; }
+    @keyframes fI { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; animation: fI 0.4s ease-out; }
+    header { background: rgba(18,18,18,0.85); backdrop-filter: blur(15px); padding: 12px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #222; position: sticky; top:0; z-index:1000; transition: 0.3s; }
+    .logo { color: var(--primary); font-size: 26px; font-weight: 800; text-decoration: none; letter-spacing: -1px; }
+    .nav-links a { color: var(--text); text-decoration: none; margin-left: 20px; font-weight: 600; font-size: 14px; transition: 0.3s; opacity: 0.8; }
+    .nav-links a:hover { color: var(--primary); opacity: 1; }
+    .search-bar { background: #1a1a1a; border: 1px solid #333; border-radius: 25px; padding: 5px 15px; display: flex; align-items: center; }
+    .search-bar input { background: transparent; border: none; color: white; padding: 5px; outline: none; width: 200px; font-size: 13px; }
     .container { padding: 40px 5%; }
-    .hero { height: 70vh; position: relative; background: #000; display: flex; align-items: flex-end; padding: 60px 5%; margin-bottom: 40px; }
-    .hero-img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.4; }
-    .hero-content { position: relative; z-index: 10; max-width: 800px; }
-    .hero-title { font-size: 48px; color: var(--primary); margin-bottom: 15px; }
+    .hero { height: 75vh; position: relative; background: #000; display: flex; align-items: flex-end; padding: 60px 5%; margin-bottom: 40px; border-bottom: 1px solid #222; overflow: hidden; }
+    .hero-img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.4; transition: 1.5s ease; }
+    .hero:hover .hero-img { opacity: 0.5; transform: scale(1.05); }
+    .hero-content { position: relative; z-index: 10; max-width: 800px; animation: fI 0.8s ease-out; }
+    .hero-title { font-size: 56px; color: var(--primary); margin-bottom: 15px; font-weight: 900; line-height: 1.1; }
     .hero-desc { color: #ccc; margin-bottom: 25px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; font-size: 18px; }
-    .btn-main { background: var(--primary); color: black; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; margin-right: 15px; display: inline-block; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
-    .card { background: var(--card); border-radius: 8px; overflow: hidden; transition: transform 0.2s; text-decoration: none; color: inherit; border: 1px solid #222; display: flex; flex-direction: column; }
-    .card:hover { transform: translateY(-5px); border: 1px solid var(--primary); }
-    .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; }
-    .card-info { padding: 12px; }
-    .card-title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .badge { background: var(--primary); color: black; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-right: 5px; }
-    .detail-container { display: flex; gap: 40px; }
-    .detail-poster { width: 300px; flex-shrink: 0; }
-    .detail-poster img { width: 100%; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    .btn-main { background: var(--primary); color: black; padding: 14px 35px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-right: 15px; display: inline-block; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .btn-main:hover { background: #fff; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 25px; }
+    .card { background: var(--card); border-radius: 10px; overflow: hidden; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-decoration: none; color: inherit; border: 1px solid #222; display: flex; flex-direction: column; position: relative; }
+    .card:hover { transform: translateY(-8px); border-color: var(--primary); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; transition: 0.5s; }
+    .card-info { padding: 15px; background: linear-gradient(to top, #111, var(--card)); }
+    .card-title { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge { background: var(--primary); color: black; font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: 800; margin-right: 6px; }
+    .detail-container { display: flex; gap: 50px; animation: fI 0.5s ease-out; }
+    .detail-poster { width: 320px; flex-shrink: 0; }
+    .detail-poster img { width: 100%; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #333; }
     .meta-item { margin-bottom: 10px; }
-    .meta-key { color: var(--primary); font-weight: bold; width: 120px; display: inline-block; }
-    .watch-layout { display: grid; grid-template-columns: 1fr 350px; gap: 30px; }
-    .player-area { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; position: relative; }
-    .episodes-card { background: #181818; border-radius: 8px; padding: 20px; height: fit-content; max-height: 80vh; overflow-y: auto; border: 1px solid #333; }
-    .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
-    .ep-link { background: #2a2a2a; color: white; text-decoration: none; padding: 10px; border-radius: 4px; text-align: center; font-size: 12px; border: 1px solid #444; }
-    .ep-link:hover, .ep-link.active { background: var(--primary); color: #000; border-color: var(--primary); }
-    .controls { display: flex; gap: 20px; align-items: center; margin: 20px 0; background: #181818; padding: 15px; border-radius: 8px; border: 1px solid #333; flex-wrap: wrap; }
-    .toggle-group { display: flex; align-items: center; gap: 10px; }
-    .tab-group { display: flex; background: #222; border-radius: 5px; overflow: hidden; }
-    .tab { padding: 6px 15px; cursor: pointer; border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; transition: 0.2s; }
+    .meta-key { color: var(--primary); font-weight: 800; width: 120px; display: inline-block; }
+    .watch-layout { display: grid; grid-template-columns: 1fr 380px; gap: 35px; animation: fI 0.5s ease-out; }
+    .player-area { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; position: relative; border: 1px solid #222; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7); }
+    .episodes-card { background: #161616; border-radius: 12px; padding: 25px; height: fit-content; max-height: 80vh; overflow-y: auto; border: 1px solid #222; }
+    .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); gap: 10px; }
+    .ep-link { background: #1f1f1f; color: #fff; text-decoration: none; padding: 12px; border-radius: 6px; text-align: center; font-size: 13px; font-weight: 600; border: 1px solid #333; transition: 0.2s; }
+    .ep-link:hover, .ep-link.active { background: var(--primary); color: #000; border-color: var(--primary); transform: scale(1.05); }
+    .controls { display: flex; gap: 20px; align-items: center; margin: 25px 0; background: #161616; padding: 20px; border-radius: 12px; border: 1px solid #222; flex-wrap: wrap; }
+    .toggle-group { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 14px; }
+    .tab-group { background: #000; padding: 4px; border-radius: 8px; border: 1px solid #333; display: flex; }
+    .tab { padding: 8px 20px; cursor: pointer; border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; transition: 0.3s; border-radius: 6px; }
     .tab.active { background: var(--primary); color: black; }
-    .season-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-    .season-item { background: #222; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px; border: 1px solid #444; font-size: 14px; }
-    .season-item:hover, .season-item.active { border-color: var(--primary); color: var(--primary); }
-    @media (max-width: 900px) { .detail-container, .watch-layout { flex-direction: column; display: block; } .detail-poster { width: 100%; max-width: 300px; } .hero-title { font-size: 32px; } }
+    .season-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 15px; }
+    .season-item { background: #1a1a1a; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; border: 1px solid #333; font-size: 14px; transition: 0.3s; }
+    .season-item:hover, .season-item.active { border-color: var(--primary); color: var(--primary); background: #000; }
+    @media (max-width: 900px) { .detail-container, .watch-layout { flex-direction: column; display: block; } .detail-poster { width: 100%; max-width: 320px; } .hero-title { font-size: 36px; } }
 </style>
 """
 
@@ -182,7 +185,7 @@ HEADER_HTML = """
 @app.get("/explore", response_class=HTMLResponse)
 def explore_ui():
     d = get_home(); h = d["spotlight"][0] if d["spotlight"] else None
-    hero_html = f'<div class="hero"><img src="{h["image"]}" class="hero-img"><div class="hero-content"><h1 class="hero-title">{h["title"]}</h1><p class="hero-desc">{h["description"]}</p><div style="margin-bottom: 30px;"><span class="badge">{h.get("type", "")}</span><span class="badge">{h.get("duration", "")}</span><span class="badge">SUB {h.get("sub", "")}</span><span class="badge" style="background:#fff;">{h.get("release_date", "")}</span></div><a href="/anime-page?id={h["anime_id"]}" class="btn-main">View Details</a><a href="/watch-page?id={h["anime_id"]}" class="btn-main" style="background:#fff; color:black;">Watch Now</a></div></div>' if h else ""
+    hero_html = f'<div class="hero"><img src="{h["image"]}" class="hero-img"><div class="hero-content"><h1 class="hero-title">{h["title"]}</h1><p class="hero-desc">{h["description"]}</p><div style="margin-bottom: 30px;"><span class="badge">{h.get("type", "")}</span><span class="badge">{h.get("duration", "")}</span><span class="badge">SUB {h.get("sub", "")}</span><span class="badge" style="background:#fff; color:#000;">{h.get("release_date", "")}</span></div><a href="/anime-page?id={h["anime_id"]}" class="btn-main">View Details</a><a href="/watch-page?id={h["anime_id"]}" class="btn-main" style="background:#fff; color:black;">Watch Now</a></div></div>' if h else ""
     cards = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}" loading="lazy"><div class="card-info"><div class="card-title">{a["title"]}</div><div class="card-meta">{f"<span class=\"badge\">SUB {a['sub']}</span>" if a["sub"] else ""}<span>{a["type"]}</span></div></div></a>' for a in d["latest_episodes"]])
     return f"<!DOCTYPE html><html><head><title>AniwatchTV</title>{SHARED_CSS}</head><body>{HEADER_HTML}{hero_html}<div class=\"container\"><h2>Latest Episodes</h2><div class=\"grid\">{cards}</div></div></body></html>"
 
@@ -205,7 +208,7 @@ def watch_page_ui(id: str, ep: str = None, type: str = "sub"):
         if fnd: nxt = f"/watch-page?id={id}&ep={x['ep_id']}&type={type}"; fnd = False
         if x["ep_id"] == cur: fnd = True
     src = f"https://megaplay.buzz/stream/s-2/{cur}/{type}" if cur else ""
-    return f"""<!DOCTYPE html><html><head><title>Watching {a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class="container"><div class="watch-layout"><div class="main-player"><div class="player-area"><iframe src="{src}" id="player" style="width:100%;height:100%;border:none;" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe></div><div class="controls"><div class="toggle-group"><span>Type:</span><div class="tab-group"><button class="tab {"active" if type=="sub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=sub'">SUB</button><button class="tab {"active" if type=="dub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=dub'">DUB</button></div></div><div class="toggle-group"><span>Auto Next:</span><div class="tab-group" id="atN_tabs"><button class="tab active" onclick="setAN(true, this)">ON</button><button class="tab" onclick="setAN(false, this)">OFF</button></div></div></div><h1 style="color:var(--primary); margin-top:25px;">{a['title']}</h1><p style="color:#aaa;">{a['description'][:500]}...</p></div><div class="episodes-card"><h3 style="margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:var(--primary);">Episodes</h3><div class="ep-grid">{eps}</div></div></div></div><script>const nxt_u = "{nxt}"; let atN = true; function setAN(v, el) {{ atN = v; document.querySelectorAll("#atN_tabs .tab").forEach(b => b.classList.remove("active")); el.classList.add("active"); }} window.addEventListener("message", function(e) {{ let d = e.data; if(typeof d === "string") {{ try {{ d = JSON.parse(d); }} catch(x) {{}} }} if(atN && (d.event === "complete" || d.type === "complete") && nxt_u) {{ window.location.href = nxt_u; }} }});</script></body></html>"""
+    return f"""<!DOCTYPE html><html><head><title>Watching {a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class="container"><div class="watch-layout"><div class="main-player"><div class="player-area"><iframe src="{src}" id="player" style="width:100%;height:100%;border:none;" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe></div><div class="controls"><div class="toggle-group"><span>Type:</span><div class="tab-group"><button class="tab {"active" if type=="sub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=sub'">SUB</button><button class="tab {"active" if type=="dub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=dub'">DUB</button></div></div><div class="toggle-group"><span>Shield:</span><div class="tab-group" id="shT_tabs"><button class="tab active" onclick="upS(true, this)">ON</button><button class="tab" onclick="upS(false, this)">OFF</button></div></div><div class="toggle-group"><span>Next:</span><div class="tab-group" id="atN_tabs"><button class="tab active" onclick="setAN(true, this)">ON</button><button class="tab" onclick="setAN(false, this)">OFF</button></div></div></div><h1 style="color:var(--primary); margin-top:25px;">{a['title']}</h1><p style="color:#aaa;">{a['description'][:500]}...</p></div><div class="episodes-card"><h3 style="margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:var(--primary);">Episodes</h3><div class="ep-grid">{eps}</div></div></div></div><script>const nxt_u = "{nxt}"; const ifr = document.getElementById('player'); let atN = true; function setAN(v, el) {{ atN = v; document.querySelectorAll("#atN_tabs .tab").forEach(b => b.classList.remove("active")); el.classList.add("active"); }} function upS(v, el) {{ document.querySelectorAll("#shT_tabs .tab").forEach(b => b.classList.remove("active")); el.classList.add("active"); if(v) {{ ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms'); }} else {{ ifr.removeAttribute('sandbox'); const s = ifr.src; ifr.src = ''; ifr.src = s; }} }} window.addEventListener("message", function(e) {{ let d = e.data; if(typeof d === "string") {{ try {{ d = JSON.parse(d); }} catch(x) {{}} }} if(atN && (d.event === "complete" || d.type === "complete") && nxt_u) {{ window.location.href = nxt_u; }} }});</script></body></html>"""
 
 @app.get("/q", response_class=HTMLResponse)
 def search_ui_results(q: str):
