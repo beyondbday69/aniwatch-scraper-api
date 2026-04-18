@@ -10,6 +10,10 @@ FastAPI-based scraper and API for `aniwatchtv.to`. Fetches anime details, search
 - **Slug Resolution:** Automatically resolves numeric IDs (e.g., `37`) to full slugs (`monster-37`).
 - **AJAX Support:** Mimics official site requests to bypass dynamic loading.
 - **Iframe Tester:** Built-in tool to verify streaming links.
+- **Interactive UI:** Full website at `/explore` with Hero section, detail pages, and player.
+- **Redirect Shield:** (Always ON by default) Blocks intrusive ads and popups using iframe sandboxing.
+- **Auto Next:** Automatically jumps to the next episode when playback finishes.
+- **Sub/Dub Toggle:** Easily switch between different audio/subtitle versions.
 
 ## API Endpoints
 
