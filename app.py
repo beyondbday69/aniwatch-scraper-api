@@ -131,7 +131,7 @@ SHARED_CSS = """
     :root { --bg: #0a0a0f; --card: #121218; --primary: #ffdd95; --accent: #ffcc66; --text: #f0f0f0; --text-muted: #9494a5; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
     body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; margin: 0; scroll-behavior: smooth; overflow-x: hidden; }
-    header { background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(15px); padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top:0; z-index:2000; transition: 0.3s; gap: 20px; }
+    header { background: rgba(10, 10, 15, 0.9); backdrop-filter: blur(15px); padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top:0; z-index:1000; transition: 0.3s; gap: 20px; }
     .logo { color: var(--primary); font-size: 24px; font-weight: 700; text-decoration: none; flex-shrink: 0; }
     .nav-links { display: flex; gap: 20px; }
     .nav-links a { color: var(--text); text-decoration: none; font-weight: 500; font-size: 14px; opacity: 0.8; transition: 0.2s; }
@@ -139,14 +139,12 @@ SHARED_CSS = """
     .search-bar { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 30px; padding: 6px 15px; display: flex; align-items: center; flex-grow: 1; max-width: 400px; }
     .search-bar input { background: transparent; border: none; color: white; padding: 5px; outline: none; width: 100%; font-family: inherit; font-size: 14px; }
     .container { padding: 30px 5%; }
-    
     .hero { height: 75vh; position: relative; background: #000; display: flex; align-items: flex-end; padding: 60px 5%; margin-bottom: 40px; }
     .hero-img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.4; }
     .hero-content { position: relative; z-index: 10; max-width: 800px; animation: fadeInUp 0.8s ease; }
     .hero-title { font-size: clamp(32px, 8vw, 56px); line-height: 1.1; margin-bottom: 15px; font-weight: 700; }
     .hero-desc { color: #aaa; margin-bottom: 25px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; font-size: 16px; }
     .btn-main { background: var(--primary); color: #000; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-right: 10px; display: inline-block; transition: 0.3s; font-size: 14px; }
-    
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
     .card { background: var(--card); border-radius: 12px; overflow: hidden; transition: 0.3s; text-decoration: none; color: inherit; border: 1px solid rgba(255,255,255,0.03); }
     .card:hover { transform: translateY(-5px); border-color: var(--primary); }
@@ -154,11 +152,9 @@ SHARED_CSS = """
     .card-info { padding: 10px; }
     .card-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .badge { background: var(--primary); color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-right: 5px; }
-    
     .detail-container { display: grid; grid-template-columns: 300px 1fr; gap: 40px; }
     .detail-poster img { width: 100%; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .meta-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-    
     .watch-layout { display: grid; grid-template-columns: 1fr 350px; gap: 30px; }
     .player-container { border-radius: 15px; overflow: hidden; background: #000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .player-area { width: 100%; aspect-ratio: 16/9; }
@@ -166,21 +162,15 @@ SHARED_CSS = """
     .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; margin-top: 15px; }
     .ep-link { background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; padding: 10px; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 600; }
     .ep-link.active { background: var(--primary); color: #000; }
-    
     .controls { display: flex; gap: 15px; align-items: center; margin: 20px 0; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap; }
     .tab-group { display: flex; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 4px; border: 1px solid rgba(255,255,255,0.1); }
     .tab { padding: 6px 18px; cursor: pointer; border: none; background: transparent; color: white; font-weight: 600; border-radius: 6px; font-size: 12px; }
     .tab.active { background: var(--primary); color: #000; }
-
+    .season-item { background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 1px solid transparent; transition: 0.3s; }
+    .season-item:hover { border-color: var(--primary); color: var(--primary); }
+    .season-item.active { background: var(--primary); color: #000; box-shadow: 0 5px 15px rgba(255,221,149,0.2); }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 900px) {
-        header { flex-wrap: wrap; padding: 10px 5%; justify-content: center; }
-        .search-bar { order: 3; max-width: 100%; flex-basis: 100%; }
-        .watch-layout, .detail-container { grid-template-columns: 1fr; }
-        .hero { height: 60vh; padding-bottom: 40px; }
-        .hero-title { font-size: 32px; }
-        .hero-desc { -webkit-line-clamp: 2; font-size: 14px; }
-    }
+    @media (max-width: 900px) { header { flex-wrap: wrap; padding: 10px 5%; justify-content: center; } .search-bar { order: 3; max-width: 100%; flex-basis: 100%; } .watch-layout, .detail-container { grid-template-columns: 1fr; } .hero { height: 60vh; padding-bottom: 40px; } .hero-title { font-size: 32px; } .hero-desc { -webkit-line-clamp: 2; font-size: 14px; } }
 </style>
 """
 
@@ -203,9 +193,9 @@ def explore_ui():
 def anime_page_ui(id: str):
     a = get_anime(id); e = get_episodes(id)
     eps = "".join([f'<a href="/watch-page?id={id}&ep={x["ep_id"]}" class="ep-link">{x["number"]}</a>' for x in e["episodes"]])
-    sns = "".join([f'<a href="/anime-page?id={s["anime_id"]}" class="season-item {"active" if s["anime_id"] == id else ""}" style="background:#222;color:#fff;padding:8px 15px;border-radius:5px;text-decoration:none;font-size:13px;border:1px solid #444;">{s["title"]}</a>' for s in a["seasons"]])
+    sns = "".join([f'<a href="/anime-page?id={s["anime_id"]}" class="season-item {"active" if s["anime_id"] == id else ""}">{s["title"]}</a>' for s in a["seasons"]])
     dets = "".join([f'<div style="margin-bottom:8px;font-size:13px;"><span style="color:var(--primary);font-weight:600;width:90px;display:inline-block;">{k.upper()}</span><span style="opacity:0.8;">{v}</span></div>' for k, v in a["details"].items()])
-    return f"<!DOCTYPE html><html><head><title>{a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"detail-container\"><div class=\"detail-poster\"><img src=\"{a['image']}\"></div><div class=\"detail-info\"><h1 style=\"margin-top:0;\">{a['title']}</h1><p style=\"color:#aaa;line-height:1.7;margin-bottom:30px;\">{a['description']}</p>{'<div style=\"margin-bottom:25px;\"><h3>SEASONS</h3><div style=\"display:flex;gap:8px;flex-wrap:wrap;\">'+sns+'</div></div>' if sns else ''}<div class=\"meta-card\">{dets}</div><div style=\"margin-top:30px;\"><h2>EPISODES</h2><div class=\"ep-grid\">{eps}</div></div></div></div></div></body></html>"
+    return f"<!DOCTYPE html><html><head><title>{a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"detail-container\"><div class=\"detail-poster\"><img src=\"{a['image']}\"></div><div class=\"detail-info\"><h1 style=\"margin-top:0;\">{a['title']}</h1><p style=\"color:#aaa;line-height:1.7;margin-bottom:30px;\">{a['description']}</p>{'<div style=\"margin-bottom:25px;\"><h3>SEASONS</h3><div style=\"display:flex;gap:10px;flex-wrap:wrap;\">'+sns+'</div></div>' if sns else ''}<div class=\"meta-card\">{dets}</div><div style=\"margin-top:30px;\"><h2>EPISODES</h2><div class=\"ep-grid\">{eps}</div></div></div></div></div></body></html>"
 
 @app.get("/watch-page", response_class=HTMLResponse)
 def watch_page_ui(id: str, ep: str = None, type: str = "sub", autoNext: str = "on"):
@@ -218,13 +208,13 @@ def watch_page_ui(id: str, ep: str = None, type: str = "sub", autoNext: str = "o
         if fnd: nxt = f"/watch-page?id={id}&ep={x['ep_id']}&type={type}&autoNext={autoNext}"; fnd = False
         if x["ep_id"] == cur: fnd = True
     src = f"https://megaplay.buzz/stream/s-2/{cur}/{type}" if cur else ""
-    return f"""<!DOCTYPE html><html><head><title>Watching {a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class="container"><div class="watch-layout"><div class="main-player"><div class="player-container"><div class="player-area"><iframe src="{src}" id="player" style="width:100%;height:100%;border:none;" allowfullscreen></iframe></div></div><div class="controls"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;font-weight:700;">TYPE</span><div class="tab-group"><button class="tab {"active" if type=="sub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=sub&autoNext={autoNext}'">SUB</button><button class="tab {"active" if type=="dub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=dub&autoNext={autoNext}'">DUB</button></div></div><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;font-weight:700;">NEXT</span><div class="tab-group"><button class="tab {"active" if autoNext=="on" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type={type}&autoNext=on'">ON</button><button class="tab {"active" if autoNext=="off" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type={type}&autoNext=off'">OFF</button></div></div></div><h1>{a['title']}</h1><p style="color:#aaa;">{a['description'][:400]}...</p></div><div class="episodes-card"><h3 style="margin-top:0;">Episodes</h3><div class="ep-grid">{eps}</div></div></div></div><script>const u = "{nxt}"; const f = document.getElementById('player'); function up() {{ f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms'); }} window.addEventListener("message", function(e) {{ let d = e.data; if(typeof d === "string") {{ try {{ d = JSON.parse(d); }} catch(x) {{}} }} if("{autoNext}" === "on" && (d.event === "complete" || d.type === "complete") && u) {{ window.location.href = u; }} }}); up();</script></body></html>"""
+    return f"""<!DOCTYPE html><html><head><title>Watching {a['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class="container"><div class="watch-layout"><div class="main-player"><div class="player-container"><div class="player-area"><iframe src="{src}" id="player" style="width:100%;height:100%;border:none;" allowfullscreen></iframe></div></div><div class="controls"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;font-weight:700;">TYPE</span><div class="tab-group"><button class="tab {"active" if type=="sub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=sub&autoNext={autoNext}'">SUB</button><button class="tab {"active" if type=="dub" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type=dub&autoNext={autoNext}'">DUB</button></div></div><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:12px;font-weight:700;">NEXT</span><div class="tab-group"><button class="tab {"active" if autoNext=="on" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type={type}&autoNext=on'">ON</button><button class="tab {"active" if autoNext=="off" else ""}" onclick="location.href='/watch-page?id={id}&ep={cur}&type={type}&autoNext=off'">OFF</button></div></div></div><h1>{a['title']}</h1><p style="color:#aaa;">{a['description'][:500]}...</p></div><div class="episodes-card"><h3 style="margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:var(--primary);">Episodes</h3><div class="ep-grid">{eps}</div></div></div></div><script>const u_n = "{nxt}"; const f_p = document.getElementById('player'); function up_s() {{ f_p.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms'); }} window.addEventListener("message", function(e) {{ let d = e.data; if(typeof d === "string") {{ try {{ d = JSON.parse(d); }} catch(x) {{}} }} if("{autoNext}" === "on" && (d.event === "complete" || d.type === "complete") && u_n) {{ window.location.href = u_n; }} }}); up_s();</script></body></html>"""
 
 @app.get("/q", response_class=HTMLResponse)
 def search_ui_results(q: str):
     d = search_api(q)
     cards = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}"><div class="card-info"><div class="card-title">{a["title"]}</div></div></a>' for a in d["results"]])
-    return f"<!DOCTYPE html><html><head><title>Search | {q}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><h2>Results for: {q}</h2><div class=\"grid\">{cards}</div></div></body></html>"
+    return f"<!DOCTYPE html><html><head><title>Search: {q}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><h2>Results for: {q}</h2><div class=\"grid\">{cards}</div></div></body></html>"
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
@@ -232,7 +222,7 @@ def read_root():
 
 @app.get("/tester", response_class=HTMLResponse)
 def tester_ui():
-    return HTMLResponse("<!DOCTYPE html><html><head><title>Tester</title><style>body { font-family: sans-serif; margin: 0; background: #0a0a0f; color: #eee; display: flex; height: 100vh; } .sidebar { width: 300px; background: #121218; padding: 20px; } .main { flex: 1; }</style></head><body><div class=\"sidebar\"><h3>PostMessage Debug</h3><input id=u style=\"width:100%;padding:10px;background:#000;color:#fff;border:1px solid #444;\"><button onclick=\"f.src=u.value\" style=\"width:100%;margin-top:10px;padding:10px;background:#ffdd95;\">Go</button><div id=log style=\"margin-top:20px;font-size:10px;color:#888;\">Logs...</div></div><div class=\"main\"><iframe id=f style=\"width:100%;height:100%;border:none;\" allowfullscreen></iframe></div><script>window.addEventListener(\"message\", (e) => {{ const d = document.createElement(\"div\"); d.innerText = JSON.stringify(e.data); document.getElementById(\"log\").prepend(d); }});</script></body></html>")
+    return HTMLResponse("<!DOCTYPE html><html><head><title>Tester</title><style>body { font-family: sans-serif; margin: 0; background: #0a0a0f; color: #eee; display: flex; height: 100vh; } .sidebar { width: 350px; background: #121218; padding: 20px; } .main { flex: 1; }</style></head><body><div class=\"sidebar\"><h3>PostMessage Debug</h3><input id=u style=\"width:100%;padding:10px;background:#000;color:#fff;border:1px solid #444;\"><button onclick=\"f.src=u.value\" style=\"width:100%;margin-top:10px;padding:10px;background:#ffdd95;\">Go</button><div id=log style=\"margin-top:20px;font-size:10px;color:#888;\">Logs...</div></div><div class=\"main\"><iframe id=f style=\"width:100%;height:100%;border:none;\" allowfullscreen></iframe></div><script>window.addEventListener(\"message\", (e) => {{ const d = document.createElement(\"div\"); d.innerText = JSON.stringify(e.data); document.getElementById(\"log\").prepend(d); }});</script></body></html>")
 
 if __name__ == "__main__":
     import uvicorn
