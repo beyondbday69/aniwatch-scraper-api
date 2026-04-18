@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import re
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Literal
+import json
 
 app = FastAPI(title="AniwatchTV Unofficial API & Website")
 
@@ -28,7 +29,7 @@ def get_slug(url):
 
 def parse_card(el):
     t = el.find(['h3', 'h2', 'div'], class_=['film-name', 'film-title', 'desi-head-title']) or el.find('a', title=True)
-    a = el.find('a', class_='film-poster') or el.find('a', href=True)
+    a = el.find('a', class_=['film-poster', 'film-poster-ahref']) or el.find('a', href=True)
     i = el.find('img')
     ts = el.find('div', class_='tick-sub')
     td = el.find('div', class_='tick-dub')
@@ -43,8 +44,7 @@ def parse_card(el):
     duration = ""
     release_date = ""
     for fdi in el.find_all(['span', 'div'], class_=['fdi-item', 'scd-item']):
-        if fdi.find(class_=re.compile(r'tick')):
-            continue
+        if fdi.find(class_=re.compile(r'tick')): continue
         text = fdi.get_text().strip()
         if not text or text in ["HD", "SD"]: continue
         if "m" in text or "h" in text: duration = text
@@ -95,16 +95,9 @@ def get_home():
 @app.get("/genre/{genre_name}")
 def get_genre(genre_name: str, page: int = 1):
     try:
-        url = f"{BASE_URL}/genre/{genre_name}?page={page}"
-        r = requests.get(url, headers=HEADERS)
-        r.raise_for_status()
+        r = requests.get(f"{BASE_URL}/genre/{genre_name}?page={page}", headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
-        items = soup.find_all('div', class_=re.compile(r'flw-item'))
-        return {
-            "genre": genre_name,
-            "page": page,
-            "results": [parse_card(i) for i in items]
-        }
+        return {"genre": genre_name, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
@@ -170,337 +163,127 @@ def get_sources(server_id: str):
 
 @app.get("/megaplay/{ep_id}")
 def get_megaplay(ep_id: str):
-    return {
-        "episode_id": ep_id,
-        "sub": f"https://megaplay.buzz/stream/s-2/{ep_id}/sub",
-        "dub": f"https://megaplay.buzz/stream/s-2/{ep_id}/dub",
-        "raw": f"https://megaplay.buzz/stream/s-2/{ep_id}/raw"
-    }
+    return {"episode_id": ep_id, "sub": f"https://megaplay.buzz/stream/s-2/{ep_id}/sub", "dub": f"https://megaplay.buzz/stream/s-2/{ep_id}/dub", "raw": f"https://megaplay.buzz/stream/s-2/{ep_id}/raw"}
 
-# --- WEBSITE UI ENDPOINTS ---
+# --- WEBSITE UI ---
 
 SHARED_CSS = """
 <style>
     :root { --bg: #0f0f0f; --card: #1a1a1a; --primary: #ffdd95; --text: #eee; --text-muted: #888; }
     body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; }
-    header { background: #181818; padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; position: sticky; top:0; z-index:100; }
+    header { background: rgba(24,24,24,0.9); backdrop-filter: blur(10px); padding: 15px 5%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; position: sticky; top:0; z-index:1000; }
     .logo { color: var(--primary); font-size: 24px; font-weight: bold; text-decoration: none; }
     .nav-links a { color: var(--text); text-decoration: none; margin-left: 20px; font-weight: 500; }
     .nav-links a:hover { color: var(--primary); }
     .search-bar { background: #222; border: 1px solid #444; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; }
     .search-bar input { background: transparent; border: none; color: white; padding: 5px; outline: none; width: 200px; }
     .container { padding: 40px 5%; }
+    .hero { height: 70vh; position: relative; overflow: hidden; background: #000; display: flex; align-items: flex-end; padding: 60px 5%; margin-bottom: 40px; }
+    .hero-img { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; opacity: 0.4; }
+    .hero-content { position: relative; z-index: 10; max-width: 800px; }
+    .hero-title { font-size: 48px; color: var(--primary); margin-bottom: 15px; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+    .hero-desc { color: #ccc; margin-bottom: 25px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; font-size: 18px; }
+    .btn-main { background: var(--primary); color: black; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; margin-right: 15px; display: inline-block; transition: 0.3s; }
+    .btn-main:hover { transform: scale(1.05); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
-    .card { background: var(--card); border-radius: 8px; overflow: hidden; transition: transform 0.2s; text-decoration: none; color: inherit; position: relative; }
+    .card { background: var(--card); border-radius: 8px; overflow: hidden; transition: transform 0.2s; text-decoration: none; color: inherit; position: relative; display: flex; flex-direction: column; border: 1px solid #222; }
     .card:hover { transform: translateY(-5px); border: 1px solid var(--primary); }
     .card img { width: 100%; aspect-ratio: 2/3; object-fit: cover; }
-    .card-info { padding: 10px; }
+    .card-info { padding: 12px; }
     .card-title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-meta { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
     .badge { background: var(--primary); color: black; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; margin-right: 5px; }
-    h2 { border-left: 4px solid var(--primary); padding-left: 15px; margin-bottom: 30px; }
-    .watch-container { display: flex; flex-direction: column; gap: 20px; }
-    .player-box { width: 100%; aspect-ratio: 16/9; background: black; border-radius: 8px; overflow: hidden; }
-    .episodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-top: 20px; }
-    .ep-btn { background: #222; border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; text-align: center; text-decoration: none; font-size: 14px; }
-    .ep-btn:hover, .ep-btn.active { background: var(--primary); color: black; border-color: var(--primary); }
-    .server-list { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-    .srv-btn { background: #333; padding: 8px 15px; border-radius: 4px; cursor: pointer; border: 1px solid #555; }
-    .srv-btn.active { background: var(--primary); color: black; }
+    .detail-container { display: flex; gap: 40px; }
+    .detail-poster { width: 300px; flex-shrink: 0; }
+    .detail-poster img { width: 100%; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    .meta-item { margin-bottom: 10px; }
+    .meta-key { color: var(--primary); font-weight: bold; width: 120px; display: inline-block; }
+    .watch-layout { display: grid; grid-template-columns: 1fr 350px; gap: 30px; }
+    .player-area { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+    .episodes-card { background: #181818; border-radius: 8px; padding: 20px; height: fit-content; max-height: 80vh; overflow-y: auto; border: 1px solid #333; }
+    .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
+    .ep-link { background: #2a2a2a; color: white; text-decoration: none; padding: 10px; border-radius: 4px; text-align: center; font-size: 12px; transition: 0.2s; border: 1px solid #444; }
+    .ep-link:hover, .ep-link.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    @media (max-width: 900px) { .detail-container, .watch-layout { flex-direction: column; display: block; } .detail-poster { width: 100%; max-width: 300px; margin-bottom: 30px; } .episodes-card { margin-top: 30px; } .hero-title { font-size: 32px; } }
 </style>
 """
 
 HEADER_HTML = """
 <header>
     <a href="/explore" class="logo">AniwatchTV</a>
-    <div class="search-bar">
-        <form action="/q" method="GET">
-            <input type="text" name="q" placeholder="Search anime...">
-        </form>
-    </div>
-    <nav class="nav-links">
-        <a href="/explore">Explore</a>
-        <a href="/tester">Tester</a>
-        <a href="/">API</a>
-    </nav>
+    <div class="search-bar"><form action="/q" method="GET"><input type="text" name="q" placeholder="Search anime..."></form></div>
+    <nav class="nav-links"><a href="/explore">Home</a><a href="/tester">Tester</a><a href="/">API</a></nav>
 </header>
 """
 
 @app.get("/explore", response_class=HTMLResponse)
-def explore():
+def explore_ui():
     try:
         data = get_home()
-        cards_html = ""
-        for anime in data["latest_episodes"]:
-            cards_html += f'''
-            <a href="/watch-page?id={anime["anime_id"]}" class="card">
-                <img src="{anime["image"]}" loading="lazy">
-                <div class="card-info">
-                    <div class="card-title">{anime["title"]}</div>
-                    <div class="card-meta">
-                        {f'<span class="badge">SUB {anime["sub"]}</span>' if anime["sub"] else ''}
-                        {f'<span class="badge">DUB {anime["dub"]}</span>' if anime["dub"] else ''}
-                        <span>{anime["type"]}</span>
+        hero = data["spotlight"][0] if data["spotlight"] else None
+        hero_html = ""
+        if hero:
+            hero_html = f'''
+            <div class="hero">
+                <img src="{hero["image"]}" class="hero-img">
+                <div class="hero-content">
+                    <h1 class="hero-title">{hero["title"]}</h1>
+                    <p class="hero-desc">{hero["description"]}</p>
+                    <div style="margin-bottom: 30px;">
+                        <span class="badge">{hero.get("type", "")}</span>
+                        <span class="badge">{hero.get("duration", "")}</span>
+                        <span class="badge">SUB {hero.get("sub", "")}</span>
                     </div>
+                    <a href="/anime-page?id={hero["anime_id"]}" class="btn-main">View Details</a>
+                    <a href="/watch-page?id={hero["anime_id"]}" class="btn-main" style="background:#fff; color:black;">Watch Now</a>
                 </div>
-            </a>
-            '''
-        
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Explore Anime</title>{SHARED_CSS}</head>
-        <body>
-            {HEADER_HTML}
-            <div class="container">
-                <h2>Latest Episodes</h2>
-                <div class="grid">{cards_html}</div>
-            </div>
-        </body>
-        </html>
-        """
-    except Exception as e: return HTMLResponse(f"Error: {e}")
+            </div>'''
+        cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}" loading="lazy"><div class="card-info"><div class="card-title">{a["title"]}</div><div class="card-meta">{f"<span class=\"badge\">SUB {a['sub']}</span>" if a["sub"] else ""}<span>{a["type"]}</span></div></div></a>' for a in data["latest_episodes"]])
+        return f"<!DOCTYPE html><html><head><title>AniwatchTV - Home</title>{SHARED_CSS}</head><body>{HEADER_HTML}{hero_html}<div class=\"container\"><h2>Latest Episodes</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
+    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
 
-@app.get("/q", response_class=HTMLResponse)
-def search_ui(q: str = Query(...)):
-    try:
-        data = search_api(q)
-        cards_html = ""
-        for anime in data["results"]:
-            cards_html += f'''
-            <a href="/watch-page?id={anime["anime_id"]}" class="card">
-                <img src="{anime["image"]}" loading="lazy">
-                <div class="card-info">
-                    <div class="card-title">{anime["title"]}</div>
-                    <div class="card-meta">
-                        <span>{anime["type"]}</span>
-                    </div>
-                </div>
-            </a>
-            '''
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Search: {q}</title>{SHARED_CSS}</head>
-        <body>
-            {HEADER_HTML}
-            <div class="container">
-                <h2>Search Results for: {q}</h2>
-                <div class="grid">{cards_html}</div>
-            </div>
-        </body>
-        </html>
-        """
-    except Exception as e: return HTMLResponse(f"Error: {e}")
-
-@app.get("/watch-page", response_class=HTMLResponse)
-def watch_page(id: str, ep: str = None):
+@app.get("/anime-page", response_class=HTMLResponse)
+def anime_page_ui(id: str):
     try:
         anime = get_anime(id)
         episodes = get_episodes(id)
-        
+        eps_html = "".join([f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-link">{e["number"]}</a>' for e in episodes["episodes"]])
+        details_html = "".join([f'<div class="meta-item"><span class="meta-key">{k.capitalize()}:</span> <span>{v}</span></div>' for k, v in anime["details"].items()])
+        return f"<!DOCTYPE html><html><head><title>{anime['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"detail-container\"><div class=\"detail-poster\"><img src=\"{anime['image']}\"></div><div class=\"detail-info\"><h1 style=\"color:var(--primary); font-size:42px;\">{anime['title']}</h1><p style=\"font-size:18px; line-height:1.6; color:#ccc;\">{anime['description']}</p><div style=\"margin: 30px 0; background:#181818; padding:20px; border-radius:8px;\">{details_html}</div><div class=\"episodes-section\"><h2 style=\"margin-bottom:20px;\">Episodes</h2><div class=\"ep-grid\">{eps_html}</div></div></div></div></div></body></html>"
+    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
+
+@app.get("/watch-page", response_class=HTMLResponse)
+def watch_page_ui(id: str, ep: str = None):
+    try:
+        anime = get_anime(id)
+        episodes = get_episodes(id)
         current_ep_id = ep if ep else (episodes["episodes"][0]["ep_id"] if episodes["episodes"] else None)
-        
         eps_html = ""
+        next_ep_url = ""
+        found_current = False
         for e in episodes["episodes"]:
             active = "active" if e["ep_id"] == current_ep_id else ""
-            eps_html += f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-btn {active}">{e["number"]}</a>'
-            
-        player_html = ""
-        if current_ep_id:
-            # Default to megaplay for easiest embedding
-            stream_url = f"https://megaplay.buzz/stream/s-2/{current_ep_id}/sub"
-            player_html = f'<iframe src="{stream_url}" id="player" class="player-box" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>'
+            eps_html += f'<a href="/watch-page?id={id}&ep={e["ep_id"]}" class="ep-link {active}">{e["number"]}</a>'
+            if found_current: next_ep_url = f"/watch-page?id={id}&ep={e['ep_id']}"; found_current = False
+            if e["ep_id"] == current_ep_id: found_current = True
+        stream_url = f"https://megaplay.buzz/stream/s-2/{current_ep_id}/sub" if current_ep_id else ""
+        return f"<!DOCTYPE html><html><head><title>Watching {anime['title']}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><div class=\"watch-layout\"><div class=\"main-player\"><div class=\"player-area\"><iframe src=\"{stream_url}\" id=\"player\" style=\"width:100%;height:100%;border:none;\" allowfullscreen=\"true\" sandbox=\"allow-scripts allow-same-origin allow-forms\"></iframe></div><h1 style=\"color:var(--primary); margin-top:25px;\">{anime['title']}</h1><p style=\"color:#aaa; line-height:1.6;\">{anime['description'][:500]}...</p></div><div class=\"episodes-card\"><h3 style=\"margin-top:0; border-bottom:1px solid #333; padding-bottom:10px; color:var(--primary);\">Episodes</h3><div class=\"ep-grid\">{eps_html}</div></div></div></div><script>const nextUrl = \"{next_ep_url}\"; window.addEventListener(\"message\", function(event) {{ let data = event.data; if (typeof data === \"string\") {{ try {{ data = JSON.parse(data); }} catch(e) {{}} }} if ((data.event === \"complete\" || data.type === \"complete\") && nextUrl) {{ window.location.href = nextUrl; }} }});</script></body></html>"
+    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
 
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head><title>Watching {anime["title"]}</title>{SHARED_CSS}</head>
-        <body>
-            {HEADER_HTML}
-            <div class="container">
-                <div class="watch-container">
-                    {player_html}
-                    <div class="anime-info">
-                        <h1 style="color:var(--primary);">{anime["title"]}</h1>
-                        <p style="color:var(--text-muted);">{anime["description"][:300]}...</p>
-                    </div>
-                    <div class="episodes-section">
-                        <h3>Episodes</h3>
-                        <div class="episodes-grid">{eps_html}</div>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-    except Exception as e: return HTMLResponse(f"Error: {e}")
+@app.get("/q", response_class=HTMLResponse)
+def search_ui_results(q: str):
+    try:
+        data = search_api(q)
+        cards_html = "".join([f'<a href="/anime-page?id={a["anime_id"]}" class="card"><img src="{a["image"]}"><div class="card-info"><div class="card-title">{a["title"]}</div></div></a>' for a in data["results"]])
+        return f"<!DOCTYPE html><html><head><title>Search: {q}</title>{SHARED_CSS}</head><body>{HEADER_HTML}<div class=\"container\"><h2>Results for: {q}</h2><div class=\"grid\">{cards_html}</div></div></body></html>"
+    except Exception as e: return HTMLResponse(f"Error: {e}", status_code=500)
 
 @app.get("/", response_class=HTMLResponse)
 def read_root():
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>AniwatchTV Unofficial API</title>
-        <style>
-            body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; background: #0f0f0f; color: #eee; }
-            .container { max-width: 900px; margin: 40px auto; padding: 20px; background: #181818; border-radius: 8px; border: 1px solid #333; }
-            h1 { color: #ffdd95; border-bottom: 2px solid #ffdd95; padding-bottom: 10px; }
-            h2 { color: #ffdd95; margin-top: 30px; }
-            code { background: #222; padding: 2px 6px; border-radius: 4px; color: #ffdd95; font-family: monospace; }
-            .endpoint { margin-bottom: 20px; padding: 15px; background: #222; border-radius: 5px; }
-            .method { font-weight: bold; color: #2ecc71; margin-right: 10px; }
-            .path { font-weight: bold; color: #3498db; }
-            .desc { margin-top: 5px; color: #ccc; }
-            a { color: #ffdd95; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-            .btn { display: inline-block; padding: 10px 20px; background: #ffdd95; color: black; border-radius: 5px; font-weight: bold; margin-top: 20px; margin-right: 10px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>AniwatchTV Unofficial API</h1>
-            <p>Welcome to the unofficial scraper API and website for AniwatchTV.</p>
-            
-            <a href="/explore" class="btn">Launch Website</a>
-            <a href="/tester" class="btn" style="background:#444; color:white;">Open Iframe Tester</a>
-
-            <h2>Core Endpoints</h2>
-            
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/home</span>
-                <div class="desc">Fetches Spotlights, Trending, Genres, and Latest Episodes.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/genre/{name}</span>
-                <div class="desc">Fetch anime list for a specific genre (e.g. action, shounen).</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/search?q={query}</span>
-                <div class="desc">Search for anime by title.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/anime/{id_or_slug}</span>
-                <div class="desc">Get full details, metadata, and season list.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/episodes/{anime_id}</span>
-                <div class="desc">Get episode list for a series.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/servers/{ep_id}</span>
-                <div class="desc">List available streaming servers.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/sources/{server_id}</span>
-                <div class="desc">Get the final embed link.</div>
-            </div>
-
-            <div class="endpoint">
-                <span class="method">GET</span><span class="path">/megaplay/{ep_id}</span>
-                <div class="desc">Direct megaplay.buzz iframe URLs.</div>
-            </div>
-
-            <p style="margin-top: 40px; font-size: 12px; color: #666;">
-                Note: This API is for educational purposes. All content rights belong to the original owners.
-            </p>
-        </div>
-    </body>
-    </html>
-    """
+    return HTMLResponse("<!DOCTYPE html><html><head><title>AniwatchTV Unofficial</title><style>body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; align-items: center; justify-content: center; height: 100vh; } .box { text-align: center; background: #181818; padding: 50px; border-radius: 12px; border: 1px solid #333; } .btn { display: inline-block; padding: 15px 40px; background: #ffdd95; color: black; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 20px; }</style></head><body><div class=\"box\"><h1>AniwatchTV</h1><a href=\"/explore\" class=\"btn\">Enter Website</a></div></body></html>")
 
 @app.get("/tester", response_class=HTMLResponse)
-def tester():
-    return HTMLResponse("""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Aniwatch API - Iframe Tester</title>
-        <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; height: 100vh; overflow: hidden; }
-            .sidebar { width: 350px; background: #181818; border-right: 1px solid #333; display: flex; flex-direction: column; }
-            .main { flex: 1; display: flex; flex-direction: column; background: #000; position: relative; }
-            .header { padding: 20px; border-bottom: 1px solid #333; }
-            .input-group { display: flex; gap: 10px; margin-top: 10px; }
-            input { flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: white; }
-            button { padding: 10px 20px; border-radius: 4px; border: none; background: #ffdd95; color: black; font-weight: bold; cursor: pointer; }
-            button:hover { background: #ffcc66; }
-            #log { flex: 1; overflow-y: auto; padding: 20px; font-size: 13px; font-family: monospace; border-top: 1px solid #333; }
-            .log-entry { margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px; }
-            .log-time { color: #888; margin-right: 10px; }
-            .log-event { color: #ffdd95; font-weight: bold; }
-            .log-data { color: #aaa; }
-            iframe { width: 100%; height: 100%; border: none; }
-            .badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; text-transform: uppercase; margin-left: 5px; }
-            .badge-info { background: #3498db; color: white; }
-            .badge-success { background: #2ecc71; color: white; }
-            .badge-error { background: #e74c3c; color: white; }
-        </style>
-    </head>
-    <body>
-        <div class="sidebar">
-            <div class="header">
-                <h3>MegaPlay Tester</h3>
-                <p style="font-size: 12px; color: #888;">Paste your source link or megaplay URL below.</p>
-                <div class="input-group">
-                    <input type="text" id="u" placeholder="https://megaploud.blog/...">
-                    <button onclick="loadUrl()">Load</button>
-                </div>
-            </div>
-            <div id="log">
-                <div style="color: #ffdd95; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">Event Log (PostMessage)</div>
-            </div>
-        </div>
-        <div class="main">
-            <iframe id="f" allowfullscreen="true" sandbox="allow-scripts allow-same-origin allow-forms" src="about:blank"></iframe>
-        </div>
-
-        <script>
-            function addLog(event, data) {
-                const log = document.getElementById('log');
-                const div = document.createElement('div');
-                div.className = 'log-entry';
-                const time = new Date().toLocaleTimeString();
-                
-                let badgeClass = 'badge-info';
-                if(event === 'complete') badgeClass = 'badge-success';
-                if(event === 'error') badgeClass = 'badge-error';
-                
-                div.innerHTML = `<span class="log-time">${time}</span><span class="log-event">${event}</span><span class="badge ${badgeClass}">${data.channel || 'api'}</span><br><span class="log-data">${JSON.stringify(data, null, 2)}</span>`;
-                log.insertBefore(div, log.firstChild.nextSibling);
-            }
-
-            function loadUrl() {
-                const url = document.getElementById('u').value;
-                if(url) {
-                    const log = document.getElementById('log');
-                    log.innerHTML = '<div style="color: #ffdd95; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px;">Event Log (PostMessage)</div>';
-                    document.getElementById('f').src = url;
-                    addLog('loading', { url: url });
-                }
-            }
-
-            window.addEventListener("message", function (event) {
-                let data = event.data;
-                if (typeof data === "string") {
-                    try { data = JSON.parse(data); } catch (e) { return; }
-                }
-
-                if (data.channel === "megacloud" || data.type === "watching-log" || data.event) {
-                    addLog(data.event || data.type || 'message', data);
-                }
-            });
-        </script>
-    </body>
-    </html>
-    """)
+def tester_ui():
+    return HTMLResponse("<!DOCTYPE html><html><head><title>MegaPlay Tester</title><style>body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #0f0f0f; color: #eee; display: flex; height: 100vh; } .sidebar { width: 350px; background: #181818; border-right: 1px solid #333; } .main { flex: 1; background: #000; } #log { padding: 20px; font-size: 12px; font-family: monospace; overflow-y: auto; height: 70%; }</style></head><body><div class=\"sidebar\"><div style=\"padding:20px;\"><h3>Tester</h3><input id=u style=\"width:100%; padding:8px; background:#222; color:#fff; border:1px solid #444;\"><button onclick=\"f.src=u.value\" style=\"margin-top:10px; width:100%; padding:10px;\">Load</button></div><div id=log>Logs...</div></div><div class=\"main\"><iframe id=f style=\"width:100%;height:100%;border:none;\" allowfullscreen sandbox=\"allow-scripts allow-same-origin allow-forms\"></iframe></div><script>window.addEventListener(\"message\", (e) => {{ const d = document.createElement(\"div\"); d.innerText = JSON.stringify(e.data); document.getElementById(\"log\").prepend(d); }});</script></body></html>")
 
 if __name__ == "__main__":
     import uvicorn
