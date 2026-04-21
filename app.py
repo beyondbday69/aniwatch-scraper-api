@@ -326,7 +326,38 @@ def get_mal_anime(mal_id: str):
     try:
         r = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}/full", timeout=10)
         r.raise_for_status()
-        return {"details": r.json().get("data", {})}
+        data = r.json().get("data", {})
+        
+        details = {
+            "japanese": data.get("title_japanese", ""),
+            "aired": data.get("aired", {}).get("string", ""),
+            "premiered": f'{data.get("season", "")} {data.get("year", "")}'.strip().capitalize(),
+            "duration": data.get("duration", ""),
+            "status": data.get("status", ""),
+            "score": str(data.get("score", "")),
+            "genres": ", ".join([g.get("name") for g in data.get("genres", [])]),
+            "studios": ", ".join([s.get("name") for s in data.get("studios", [])])
+        }
+
+        seasons = []
+        for rel in data.get("relations", []):
+            if rel.get("relation", "").lower() in ["prequel", "sequel", "alternative setting", "side story", "spin-off", "summary", "alternative version"]:
+                for entry in rel.get("entry", []):
+                    if entry.get("type") == "anime":
+                        seasons.append({
+                            "title": entry.get("name"),
+                            "anime_id": str(entry.get("mal_id"))
+                        })
+
+        return {
+            "anime_id": str(mal_id),
+            "provider": "mal",
+            "title": data.get("title", "Unknown"),
+            "description": data.get("synopsis", ""),
+            "image": data.get("images", {}).get("jpg", {}).get("large_image_url", ""),
+            "details": details,
+            "seasons": seasons
+        }
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/episodes/{mal_id}")
