@@ -1,3 +1,4 @@
+import base64
 from fastapi import FastAPI, HTTPException, Query, Path
 import requests
 from bs4 import BeautifulSoup
@@ -17,13 +18,15 @@ app.add_middleware(
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
 AJAX_HEADERS = {**HEADERS, "X-Requested-With": "XMLHttpRequest"}
-BASE_URL = "https://aniwatchtv.to"
+
+def get_base(provider: str):
+    return "https://aniwatch.co.at" if provider == "co" else "https://aniwatchtv.to"
 
 # --- UTILS ---
 
 def get_slug(url):
     if not url: return ""
-    return url.split('?')[0].strip('/').replace('watch/', '', 1)
+    return url.split('?')[0].strip('/').replace('watch/', '', 1).replace('http://', '').replace('https://', '').replace('aniwatchtv.to/', '').replace('aniwatch.co.at/', '')
 
 def parse_card(el):
     t = el.find(['h3', 'h2', 'div'], class_=['film-name', 'film-title', 'desi-head-title']) or el.find('a', title=True)
@@ -66,8 +69,9 @@ def parse_card(el):
 @app.get("/")
 def read_root():
     return {
-        "message": "Welcome to AniwatchTV Unofficial API",
+        "message": "Welcome to AniwatchTV Unofficial API (Hybrid Targeting Enabled)",
         "documentation": "/docs",
+        "usage": "Append ?provider=co for aniwatch.co.at or ?provider=tv for aniwatchtv.to (default)",
         "endpoints": {
             "home": "/home",
             "search": "/search?q={query}",
@@ -81,9 +85,11 @@ def read_root():
     }
 
 @app.get("/home")
-def get_home():
+def get_home(provider: str = "tv"):
     try:
-        r = requests.get(f"{BASE_URL}/home", headers=HEADERS)
+        base = get_base(provider)
+        url = f"{base}/home" if provider == "tv" else base
+        r = requests.get(url, headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
         data = {"spotlight": [], "trending": [], "top_airing": [], "most_popular": [], "most_favorite": [], "latest_completed": [], "latest_episodes": [], "genres": []}
         for item in soup.select("#slider .swiper-slide"): data["spotlight"].append(parse_card(item))
@@ -103,31 +109,37 @@ def get_home():
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/genre/{genre_name}")
-def get_genre(genre_name: str, page: int = 1):
+def get_genre(genre_name: str, page: int = 1, provider: str = "tv"):
     try:
-        r = requests.get(f"{BASE_URL}/genre/{genre_name}?page={page}", headers=HEADERS)
+        base = get_base(provider)
+        r = requests.get(f"{base}/genre/{genre_name}?page={page}", headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
-        return {"genre": genre_name, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
+        return {"genre": genre_name, "provider": provider, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
-def search_api(q: str = Query(...)):
+def search_api(q: str = Query(...), provider: str = "tv"):
     try:
-        r = requests.get(f"{BASE_URL}/search?keyword={q}", headers=HEADERS)
+        base = get_base(provider)
+        url = f"{base}/search?keyword={q}" if provider == "tv" else f"{base}/?s={q}"
+        r = requests.get(url, headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
-        return {"results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
+        return {"query": q, "provider": provider, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/anime/{anime_id}")
-def get_anime(anime_id: str):
+def get_anime(anime_id: str, provider: str = "tv"):
     try:
+        base = get_base(provider)
         if anime_id.isdigit():
-            s = BeautifulSoup(requests.get(f"{BASE_URL}/search?keyword={anime_id}", headers=HEADERS).text, 'html.parser')
+            url = f"{base}/search?keyword={anime_id}" if provider == "tv" else f"{base}/?s={anime_id}"
+            s = BeautifulSoup(requests.get(url, headers=HEADERS).text, 'html.parser')
             p = re.compile(rf"-{anime_id}$")
             for a in s.find_all('a', href=True):
                 h = a['href'].split('?')[0]
-                if p.search(h): anime_id = h.lstrip('/'); break
-        r = requests.get(f"{BASE_URL}/{anime_id}", headers=HEADERS)
+                if p.search(h): anime_id = get_slug(h); break
+        
+        r = requests.get(f"{base}/{anime_id}", headers=HEADERS)
         soup = BeautifulSoup(r.text, 'html.parser')
         details = {}; info = soup.find('div', class_='anisc-info')
         if info:
@@ -135,7 +147,9 @@ def get_anime(anime_id: str):
                 text = item.get_text().strip()
                 if ':' in text: k, v = text.split(':', 1); details[k.strip().lower()] = v.strip()
         return {
-            "anime_id": anime_id, "title": soup.find('h2', class_='film-name').get_text().strip() if soup.find('h2', class_='film-name') else "Unknown",
+            "anime_id": anime_id, 
+            "provider": provider,
+            "title": soup.find('h2', class_='film-name').get_text().strip() if soup.find('h2', class_='film-name') else "Unknown",
             "description": soup.find('div', class_='film-description').get_text().strip() if soup.find('div', class_='film-description') else "",
             "image": soup.find('img', class_='film-poster-img').get('src') if soup.find('img', class_='film-poster-img') else "",
             "details": details,
@@ -144,27 +158,61 @@ def get_anime(anime_id: str):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/episodes/{anime_id}")
-def get_episodes(anime_id: str):
+def get_episodes(anime_id: str, provider: str = "tv"):
     try:
+        base = get_base(provider)
+        if provider == "co":
+            r = requests.get(f"{base}/{anime_id}", headers=HEADERS)
+            m = re.search(r'episode_nonce":"([^"]+)"', r.text)
+            nonce = m.group(1) if m else ""
+            soup = BeautifulSoup(r.text, "html.parser")
+            detail = soup.find(id="ani_detail")
+            real_id = detail.get("data-anime-id") if detail else ""
+            payload = {"action": "hianime_episode_list", "anime_id": real_id, "nonce": nonce}
+            res = requests.post(f"{base}/wp-admin/admin-ajax.php", data=payload, headers=HEADERS).json()
+            s = BeautifulSoup(res.get("html", ""), "html.parser")
+            return {"provider": provider, "episodes": [{"ep_id": a.get("data-id", ""), "number": a.get("data-number", ""), "title": a.get("title", "")} for a in s.find_all("a", class_="ep-item")]}
+            
         if not anime_id.isdigit():
             m = re.search(r'-(\d+)$', anime_id)
             if m: anime_id = m.group(1)
-        r = requests.get(f"{BASE_URL}/ajax/v2/episode/list/{anime_id}", headers=AJAX_HEADERS)
+        r = requests.get(f"{base}/ajax/v2/episode/list/{anime_id}", headers=AJAX_HEADERS)
         s = BeautifulSoup(r.json()["html"], 'html.parser')
-        return {"episodes": [{"ep_id": a["data-id"], "number": a["data-number"], "title": a["title"]} for a in s.find_all("a", class_="ep-item")]}
+        return {"provider": provider, "episodes": [{"ep_id": a["data-id"], "number": a["data-number"], "title": a["title"]} for a in s.find_all("a", class_="ep-item")]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/servers/{ep_id}")
-def get_servers(ep_id: str):
+def get_servers(ep_id: str, provider: str = "tv"):
     try:
-        r = requests.get(f"{BASE_URL}/ajax/v2/episode/servers?episodeId={ep_id}", headers=AJAX_HEADERS)
+        base = get_base(provider)
+        if provider == "co":
+            r = requests.get(f"{base}/?p={ep_id}", headers=HEADERS, allow_redirects=True)
+            m = re.search(r'episode_nonce":"([^"]+)"', r.text)
+            nonce = m.group(1) if m else ""
+            payload = {"action": "hianime_episode_servers", "episode_id": ep_id, "nonce": nonce}
+            res = requests.post(f"{base}/wp-admin/admin-ajax.php", data=payload, headers=HEADERS).json()
+            s = BeautifulSoup(res.get("html", ""), "html.parser")
+            servers = []
+            for d in s.find_all("div", class_="server-item"):
+                servers.append({"server_id": d.get("data-hash", ""), "name": d.get("data-server-name") or d.get_text().strip(), "type": d.get("data-type")})
+            return {"provider": provider, "servers": servers}
+
+        r = requests.get(f"{base}/ajax/v2/episode/servers?episodeId={ep_id}", headers=AJAX_HEADERS)
         s = BeautifulSoup(r.json()["html"], 'html.parser')
-        return {"servers": [{"server_id": d["data-id"], "name": d.get_text().strip(), "type": d["data-type"]} for d in s.find_all("div", class_="server-item")]}
+        return {"provider": provider, "servers": [{"server_id": d["data-id"], "name": d.get_text().strip(), "type": d["data-type"]} for d in s.find_all("div", class_="server-item")]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sources/{server_id}")
-def get_sources(server_id: str):
-    try: return requests.get(f"{BASE_URL}/ajax/v2/episode/sources?id={server_id}", headers=AJAX_HEADERS).json()
+def get_sources(server_id: str, provider: str = "tv"):
+    try: 
+        if provider == "co":
+            try:
+                link = base64.b64decode(server_id).decode('utf-8')
+                return {"provider": provider, "type": "iframe", "link": link}
+            except:
+                return {"provider": provider, "type": "iframe", "link": ""}
+        base = get_base(provider)
+        return requests.get(f"{base}/ajax/v2/episode/sources?id={server_id}", headers=AJAX_HEADERS).json()
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/megaplay/{ep_id}")

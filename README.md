@@ -1,6 +1,13 @@
 # AniwatchTV Unofficial API
 
-A clean, JSON-only FastAPI application that scrapes anime data, metadata, and streaming sources from `aniwatchtv.to`.
+A clean, JSON-only FastAPI application that scrapes anime data, metadata, and streaming sources.
+
+## Hybrid Targeting
+The API supports hybrid targeting between two distinct domains:
+- `aniwatchtv.to` (Default, `provider=tv`)
+- `aniwatch.co.at` (`provider=co`)
+
+You can switch the target backend on any endpoint by passing the `?provider=` query parameter (e.g., `/search?q=naruto&provider=co`).
 
 ## API Endpoints
 
@@ -8,13 +15,13 @@ A clean, JSON-only FastAPI application that scrapes anime data, metadata, and st
 |----------|-------------|
 | `GET /` | API Welcome and endpoint directory. |
 | `GET /home` | Fetches trending, spotlights, genres, and latest episodes. |
-| `GET /search?q={query}` | Search for anime by title. |
-| `GET /anime/{id_or_slug}` | Get full details, metadata, and season list. |
-| `GET /episodes/{anime_id}` | List all episodes for a specific series. |
-| `GET /servers/{ep_id}` | List available streaming servers for an episode. |
-| `GET /sources/{server_id}` | Get final iframe embed links. |
+| `GET /search?q={query}&provider={tv|co}` | Search for anime by title. |
+| `GET /anime/{id_or_slug}&provider={tv|co}` | Get full details, metadata, and season list. |
+| `GET /episodes/{anime_id}&provider={tv|co}` | List all episodes for a specific series. |
+| `GET /servers/{ep_id}&provider={tv|co}` | List available streaming servers for an episode. |
+| `GET /sources/{server_id}&provider={tv|co}` | Get final iframe embed links. |
 | `GET /megaplay/{ep_id}` | Direct megaplay.buzz iframe utility links. |
-| `GET /genre/{name}` | Fetch anime list for a specific genre. |
+| `GET /genre/{name}&provider={tv|co}` | Fetch anime list for a specific genre. |
 
 ## Local Setup
 
