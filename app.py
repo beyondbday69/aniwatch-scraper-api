@@ -296,6 +296,22 @@ def get_mal_home():
         }
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/mal/genre/{genre_id}")
+def get_mal_genre_anime(genre_id: str, page: int = 1):
+    try:
+        r = requests.get(f"https://api.jikan.moe/v4/anime?genres={genre_id}&page={page}", timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        results = [parse_mal_card(anime) for anime in data.get("data", [])]
+        return {
+            "genre_id": genre_id,
+            "page": page,
+            "pagination": data.get("pagination", {}),
+            "results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/mal/genres")
 def get_mal_genres():
     try:
@@ -390,6 +406,7 @@ def custom_docs():
                 { method: "GET", path: "/mal/search", desc: "MAL search API", inputs: [{name: "q", default: "naruto"}] },
                 { method: "GET", path: "/mal/home", desc: "MAL top/current season anime", inputs: [] },
                 { method: "GET", path: "/mal/genres", desc: "MAL all genres", inputs: [] },
+                { method: "GET", path: "/mal/genre/{genre_id}", desc: "MAL anime by genre", inputs: [{name: "genre_id", default: "1", isPath: true}, {name: "page", default: "1"}] },
                 { method: "GET", path: "/mal/anime/{mal_id}", desc: "MAL anime details", inputs: [{name: "mal_id", default: "20", isPath: true}] },
                 { method: "GET", path: "/mal/episodes/{mal_id}", desc: "MAL episodes list", inputs: [{name: "mal_id", default: "20", isPath: true}, {name: "page", default: "1"}] }
             ];

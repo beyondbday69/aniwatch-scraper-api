@@ -25,6 +25,7 @@ You can switch the target backend on any endpoint by passing the `?provider=` qu
 | `GET /docv2` | Interactive Swagger-like API tester UI. |
 | `GET /mal/home` | Fetch top/current season anime from MyAnimeList. |
 | `GET /mal/genres` | Fetch all MyAnimeList genres. |
+| `GET /mal/genre/{genre_id}?page={page}` | Fetch anime list by MAL genre ID (e.g., Action=1). |
 | `GET /mal/anime/{mal_id}` | Fetch full anime details from MyAnimeList. |
 | `GET /mal/episodes/{mal_id}` | Fetch episodes list from MyAnimeList. |
 | `GET /mal/search?q={query}` | Full MyAnimeList (MAL) search. Returns MAL IDs, titles, and metadata. |
