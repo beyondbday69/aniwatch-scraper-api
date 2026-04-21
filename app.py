@@ -238,19 +238,7 @@ def search_mal(q: str = Query(...)):
         r = requests.get(f"https://api.jikan.moe/v4/anime?q={q}", timeout=10)
         r.raise_for_status()
         data = r.json()
-        results = []
-        for anime in data.get("data", []):
-            results.append({
-                "mal_id": str(anime.get("mal_id")),
-                "title": anime.get("title"),
-                "title_english": anime.get("title_english"),
-                "image": anime.get("images", {}).get("jpg", {}).get("image_url"),
-                "type": anime.get("type"),
-                "episodes": anime.get("episodes"),
-                "score": anime.get("score"),
-                "year": anime.get("year"),
-                "synopsis": anime.get("synopsis")
-            })
+        results = [parse_mal_card(anime) for anime in data.get("data", [])]
         return {"query": q, "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
