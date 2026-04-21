@@ -22,6 +22,11 @@ You can switch the target backend on any endpoint by passing the `?provider=` qu
 | `GET /sources/{server_id}&provider={tv|co}` | Get final iframe embed links. |
 | `GET /megaplay/{ep_id}` | Direct megaplay.buzz iframe utility links. |
 | `GET /megaplay/mal/{mal_id}/{ep_num}` | Get megaplay.buzz iframe URLs using MyAnimeList ID and Episode Number. |
+| `GET /docv2` | Interactive Swagger-like API tester UI. |
+| `GET /mal/home` | Fetch top/current season anime from MyAnimeList. |
+| `GET /mal/genres` | Fetch all MyAnimeList genres. |
+| `GET /mal/anime/{mal_id}` | Fetch full anime details from MyAnimeList. |
+| `GET /mal/episodes/{mal_id}` | Fetch episodes list from MyAnimeList. |
 | `GET /mal/search?q={query}` | Full MyAnimeList (MAL) search. Returns MAL IDs, titles, and metadata. |
 | `GET /genre/{name}&provider={tv|co}` | Fetch anime list for a specific genre. |
 

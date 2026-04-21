@@ -1,5 +1,6 @@
 import base64
 from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi.responses import HTMLResponse
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -253,6 +254,172 @@ def search_mal(q: str = Query(...)):
         return {"query": q, "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mal/home")
+def get_mal_home():
+    try:
+        r = requests.get("https://api.jikan.moe/v4/seasons/now", timeout=10)
+        r.raise_for_status()
+        return {"results": r.json().get("data", [])}
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mal/genres")
+def get_mal_genres():
+    try:
+        r = requests.get("https://api.jikan.moe/v4/genres/anime", timeout=10)
+        r.raise_for_status()
+        return {"genres": r.json().get("data", [])}
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mal/anime/{mal_id}")
+def get_mal_anime(mal_id: str):
+    try:
+        r = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}/full", timeout=10)
+        r.raise_for_status()
+        return {"details": r.json().get("data", {})}
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mal/episodes/{mal_id}")
+def get_mal_episodes(mal_id: str, page: int = 1):
+    try:
+        r = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}/episodes?page={page}", timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        return {"episodes": data.get("data", []), "pagination": data.get("pagination", {})}
+    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/docv2", response_class=HTMLResponse)
+def custom_docs():
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AniwatchTV API Tester (v2)</title>
+        <style>
+            :root { --bg: #0d1117; --card: #161b22; --primary: #58a6ff; --text: #c9d1d9; --border: #30363d; --success: #2ea043; }
+            body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+            header { background: var(--card); padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
+            h1 { margin: 0; color: var(--primary); }
+            .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+            .endpoint { background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; overflow: hidden; }
+            .ep-header { padding: 15px 20px; background: rgba(255,255,255,0.02); display: flex; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; }
+            .ep-header.open { border-bottom-color: var(--border); }
+            .method { background: var(--success); color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-right: 15px; }
+            .path { font-family: monospace; font-size: 16px; font-weight: bold; flex-grow: 1; }
+            .desc { color: #8b949e; font-size: 14px; }
+            .ep-body { padding: 20px; display: none; }
+            .ep-body.open { display: block; }
+            .input-group { margin-bottom: 15px; }
+            label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: bold; color: #8b949e; }
+            input { width: 100%; padding: 10px; background: #0d1117; border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-family: monospace; box-sizing: border-box; }
+            input:focus { outline: none; border-color: var(--primary); }
+            button { background: var(--primary); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+            button:hover { filter: brightness(1.2); }
+            pre { background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto; font-size: 13px; max-height: 400px; }
+            #api-list { display: flex; flex-direction: column; gap: 20px; }
+        </style>
+    </head>
+    <body>
+        <header><h1>Aniwatch API Tester (v2)</h1><p style="color:#8b949e">Interactive Swagger-like Documentation</p></header>
+        <div class="container" id="api-list"></div>
+
+        <script>
+            const endpoints = [
+                { method: "GET", path: "/home", desc: "Get trending, spotlights, etc.", inputs: [{name: "provider", default: "tv"}] },
+                { method: "GET", path: "/search", desc: "Search anime", inputs: [{name: "q", default: "naruto"}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/anime/{anime_id}", desc: "Anime details", inputs: [{name: "anime_id", default: "naruto-20", isPath: true}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/episodes/{anime_id}", desc: "List episodes", inputs: [{name: "anime_id", default: "naruto-20", isPath: true}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/servers/{ep_id}", desc: "List servers for episode", inputs: [{name: "ep_id", default: "119865", isPath: true}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/sources/{server_id}", desc: "Get iframe link", inputs: [{name: "server_id", default: "123456", isPath: true}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/genre/{genre_name}", desc: "Get anime by genre", inputs: [{name: "genre_name", default: "action", isPath: true}, {name: "page", default: "1"}, {name: "provider", default: "tv"}] },
+                { method: "GET", path: "/megaplay/{ep_id}", desc: "Direct megaplay utility", inputs: [{name: "ep_id", default: "119865", isPath: true}] },
+                { method: "GET", path: "/megaplay/mal/{mal_id}/{ep_num}", desc: "MegaPlay URL generator via MAL ID", inputs: [{name: "mal_id", default: "5114", isPath: true}, {name: "ep_num", default: "1", isPath: true}] },
+                { method: "GET", path: "/mal/search", desc: "MAL search API", inputs: [{name: "q", default: "naruto"}] },
+                { method: "GET", path: "/mal/home", desc: "MAL top/current season anime", inputs: [] },
+                { method: "GET", path: "/mal/genres", desc: "MAL all genres", inputs: [] },
+                { method: "GET", path: "/mal/anime/{mal_id}", desc: "MAL anime details", inputs: [{name: "mal_id", default: "20", isPath: true}] },
+                { method: "GET", path: "/mal/episodes/{mal_id}", desc: "MAL episodes list", inputs: [{name: "mal_id", default: "20", isPath: true}, {name: "page", default: "1"}] }
+            ];
+
+            const container = document.getElementById("api-list");
+
+            endpoints.forEach((ep, idx) => {
+                const epDiv = document.createElement("div");
+                epDiv.className = "endpoint";
+                
+                let inputsHtml = "";
+                if(ep.inputs) {
+                    ep.inputs.forEach(i => {
+                        inputsHtml += `<div class="input-group">
+                            <label>${i.name} ${i.isPath ? "(Path)" : "(Query)"}</label>
+                            <input type="text" id="input-${idx}-${i.name}" value="${i.default || ''}">
+                        </div>`;
+                    });
+                }
+
+                epDiv.innerHTML = `
+                    <div class="ep-header" onclick="toggleBody(${idx})">
+                        <span class="method">${ep.method}</span>
+                        <span class="path">${ep.path}</span>
+                        <span class="desc" style="display:inline-block; margin-left:10px;">- ${ep.desc}</span>
+                    </div>
+                    <div class="ep-body" id="body-${idx}">
+                        ${inputsHtml}
+                        <button onclick="executeReq(${idx}, '${ep.path}')">Execute</button>
+                        <h4 style="margin-top:20px; color:var(--text);">Response:</h4>
+                        <pre id="res-${idx}">Waiting for request...</pre>
+                    </div>
+                `;
+                container.appendChild(epDiv);
+            });
+
+            function toggleBody(idx) {
+                document.getElementById(`body-${idx}`).classList.toggle("open");
+                document.querySelectorAll(".ep-header")[idx].classList.toggle("open");
+            }
+
+            async function executeReq(idx, pathTemplate) {
+                const ep = endpoints[idx];
+                let finalPath = pathTemplate;
+                const queryParams = [];
+
+                if(ep.inputs) {
+                    ep.inputs.forEach(i => {
+                        const val = document.getElementById(`input-${idx}-${i.name}`).value;
+                        if(i.isPath) {
+                            finalPath = finalPath.replace(`{${i.name}}`, encodeURIComponent(val));
+                        } else if (val) {
+                            queryParams.push(`${i.name}=${encodeURIComponent(val)}`);
+                        }
+                    });
+                }
+
+                let url = finalPath;
+                if(queryParams.length > 0) url += "?" + queryParams.join("&");
+
+                const resBox = document.getElementById(`res-${idx}`);
+                resBox.innerText = `Fetching ${url} ...`;
+                
+                try {
+                    const req = await fetch(url);
+                    const isJson = req.headers.get("content-type")?.includes("json");
+                    if(isJson) {
+                        const json = await req.json();
+                        resBox.innerText = JSON.stringify(json, null, 2);
+                    } else {
+                        const text = await req.text();
+                        resBox.innerText = text;
+                    }
+                } catch(e) {
+                    resBox.innerText = "Error: " + e.message;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
 
 if __name__ == "__main__":
     import uvicorn
