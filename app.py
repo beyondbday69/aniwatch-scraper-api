@@ -256,6 +256,7 @@ def search_mal(q: str = Query(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 def parse_mal_card(anime):
+    ep_count = str(anime.get("episodes") or "")
     return {
         "title": anime.get("title") or "Unknown",
         "japanese_title": anime.get("title_japanese") or "",
@@ -264,9 +265,9 @@ def parse_mal_card(anime):
         "type": anime.get("type") or "",
         "duration": anime.get("duration") or "",
         "release_date": str(anime.get("year") or ""),
-        "sub": None,
-        "dub": None,
-        "episodes": str(anime.get("episodes") or ""),
+        "sub": ep_count,
+        "dub": ep_count,
+        "episodes": ep_count,
         "description": anime.get("synopsis") or ""
     }
 
