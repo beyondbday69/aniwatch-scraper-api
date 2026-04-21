@@ -21,6 +21,7 @@ You can switch the target backend on any endpoint by passing the `?provider=` qu
 | `GET /servers/{ep_id}&provider={tv|co}` | List available streaming servers for an episode. |
 | `GET /sources/{server_id}&provider={tv|co}` | Get final iframe embed links. |
 | `GET /megaplay/{ep_id}` | Direct megaplay.buzz iframe utility links. |
+| `GET /megaplay/mal/{mal_id}/{ep_num}` | Get megaplay.buzz iframe URLs using MyAnimeList ID and Episode Number. |
 | `GET /genre/{name}&provider={tv|co}` | Fetch anime list for a specific genre. |
 
 ## Local Setup

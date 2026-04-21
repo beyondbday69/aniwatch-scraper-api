@@ -80,6 +80,7 @@ def read_root():
             "servers": "/servers/{ep_id}",
             "sources": "/sources/{server_id}",
             "megaplay": "/megaplay/{ep_id}",
+            "megaplay_mal": "/megaplay/mal/{mal_id}/{ep_num}",
             "genre": "/genre/{name}"
         }
     }
@@ -218,6 +219,16 @@ def get_sources(server_id: str, provider: str = "tv"):
 @app.get("/megaplay/{ep_id}")
 def get_megaplay(ep_id: str):
     return {"episode_id": ep_id, "sub": f"https://megaplay.buzz/stream/s-2/{ep_id}/sub", "dub": f"https://megaplay.buzz/stream/s-2/{ep_id}/dub", "raw": f"https://megaplay.buzz/stream/s-2/{ep_id}/raw"}
+
+@app.get("/megaplay/mal/{mal_id}/{ep_num}")
+def get_megaplay_mal(mal_id: str, ep_num: str):
+    return {
+        "mal_id": mal_id,
+        "episode_number": ep_num,
+        "sub": f"https://megaplay.buzz/stream/mal/{mal_id}/{ep_num}/sub",
+        "dub": f"https://megaplay.buzz/stream/mal/{mal_id}/{ep_num}/dub",
+        "raw": f"https://megaplay.buzz/stream/mal/{mal_id}/{ep_num}/raw"
+    }
 
 if __name__ == "__main__":
     import uvicorn
