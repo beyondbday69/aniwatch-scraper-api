@@ -330,32 +330,50 @@ def custom_docs():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>AniwatchTV API Tester (v2)</title>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
-            :root { --bg: #0d1117; --card: #161b22; --primary: #58a6ff; --text: #c9d1d9; --border: #30363d; --success: #2ea043; }
-            body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
-            header { background: var(--card); padding: 20px; border-bottom: 1px solid var(--border); text-align: center; }
-            h1 { margin: 0; color: var(--primary); }
-            .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
-            .endpoint { background: var(--card); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; overflow: hidden; }
-            .ep-header { padding: 15px 20px; background: rgba(255,255,255,0.02); display: flex; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; }
-            .ep-header.open { border-bottom-color: var(--border); }
-            .method { background: var(--success); color: #fff; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-right: 15px; }
-            .path { font-family: monospace; font-size: 16px; font-weight: bold; flex-grow: 1; }
-            .desc { color: #8b949e; font-size: 14px; }
-            .ep-body { padding: 20px; display: none; }
-            .ep-body.open { display: block; }
-            .input-group { margin-bottom: 15px; }
-            label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: bold; color: #8b949e; }
-            input { width: 100%; padding: 10px; background: #0d1117; border: 1px solid var(--border); color: var(--text); border-radius: 6px; font-family: monospace; box-sizing: border-box; }
-            input:focus { outline: none; border-color: var(--primary); }
-            button { background: var(--primary); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-            button:hover { filter: brightness(1.2); }
-            pre { background: #0d1117; padding: 15px; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto; font-size: 13px; max-height: 400px; }
-            #api-list { display: flex; flex-direction: column; gap: 20px; }
+            :root { --bg: #0a0a0f; --card: #121218; --primary: #ffdd95; --text: #f0f0f0; --border: rgba(255,255,255,0.05); --success: #2ea043; }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+            body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
+            header { background: rgba(10, 10, 15, 0.85); backdrop-filter: blur(15px); padding: 30px 5%; border-bottom: 1px solid var(--border); text-align: center; position: sticky; top: 0; z-index: 100; }
+            h1 { margin: 0; color: var(--primary); font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+            p.subtitle { color: #888; font-size: 14px; margin-top: 5px; font-weight: 300; }
+            .container { max-width: 900px; margin: 40px auto; padding: 0 20px; padding-bottom: 100px; }
+            .endpoint { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 25px; transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            .endpoint:hover { border-color: rgba(255,221,149,0.2); transform: translateY(-2px); }
+            .ep-header { padding: 18px 25px; display: flex; align-items: center; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: 0.3s; flex-wrap: wrap; gap: 10px; }
+            .ep-header:hover { background: rgba(255,255,255,0.02); }
+            .ep-header.open { border-bottom-color: var(--border); background: rgba(255,255,255,0.02); }
+            .method { background: var(--success); color: #fff; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(46,204,113,0.2); }
+            .path { font-family: monospace; font-size: 15px; font-weight: 600; flex-grow: 1; color: #fff; word-break: break-all; }
+            .desc { color: #aaa; font-size: 13px; font-weight: 300; }
+            .ep-body { padding: 25px; display: none; background: #0c0c10; border-radius: 0 0 12px 12px; border-top: 1px solid var(--border); }
+            .ep-body.open { display: block; animation: fadeIn 0.3s ease; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            .input-group { margin-bottom: 20px; }
+            label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+            input { width: 100%; padding: 12px 15px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text); border-radius: 8px; font-family: monospace; font-size: 14px; transition: 0.3s; }
+            input:focus { outline: none; border-color: var(--primary); background: rgba(255,255,255,0.05); box-shadow: 0 0 0 3px rgba(255,221,149,0.1); }
+            button.execute { background: var(--primary); color: #000; border: none; padding: 14px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; width: 100%; font-size: 15px; margin-top: 10px; letter-spacing: 1px; text-transform: uppercase; }
+            button.execute:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,221,149,0.3); background: #fff; }
+            h4 { margin: 25px 0 10px 0; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+            pre { background: #050505; padding: 20px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; font-size: 13px; max-height: 500px; color: #a5d6ff; line-height: 1.5; margin: 0; }
+            pre::-webkit-scrollbar { height: 8px; width: 8px; }
+            pre::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+            
+            @media (max-width: 600px) {
+                .ep-header { padding: 15px; }
+                .method { margin-right: 10px; }
+                .desc { flex-basis: 100%; margin-top: 5px; }
+            }
         </style>
     </head>
     <body>
-        <header><h1>Aniwatch API Tester (v2)</h1><p style="color:#8b949e">Interactive Swagger-like Documentation</p></header>
+        <header>
+            <h1>ANIWATCH API</h1>
+            <p class="subtitle">Interactive Documentation & Playground</p>
+        </header>
+        
         <div class="container" id="api-list"></div>
 
         <script>
@@ -386,8 +404,8 @@ def custom_docs():
                 if(ep.inputs) {
                     ep.inputs.forEach(i => {
                         inputsHtml += `<div class="input-group">
-                            <label>${i.name} ${i.isPath ? "(Path)" : "(Query)"}</label>
-                            <input type="text" id="input-${idx}-${i.name}" value="${i.default || ''}">
+                            <label>${i.name} ${i.isPath ? "(Path Parameter)" : "(Query Parameter)"}</label>
+                            <input type="text" id="input-${idx}-${i.name}" value="${i.default || ''}" placeholder="Enter ${i.name}...">
                         </div>`;
                     });
                 }
@@ -396,13 +414,13 @@ def custom_docs():
                     <div class="ep-header" onclick="toggleBody(${idx})">
                         <span class="method">${ep.method}</span>
                         <span class="path">${ep.path}</span>
-                        <span class="desc" style="display:inline-block; margin-left:10px;">- ${ep.desc}</span>
+                        <span class="desc">${ep.desc}</span>
                     </div>
                     <div class="ep-body" id="body-${idx}">
                         ${inputsHtml}
-                        <button onclick="executeReq(${idx}, '${ep.path}')">Execute</button>
-                        <h4 style="margin-top:20px; color:var(--text);">Response:</h4>
-                        <pre id="res-${idx}">Waiting for request...</pre>
+                        <button class="execute" onclick="executeReq(${idx}, '${ep.path}')">Execute Request</button>
+                        <h4>Response</h4>
+                        <pre id="res-${idx}">Ready to send request...</pre>
                     </div>
                 `;
                 container.appendChild(epDiv);
@@ -434,18 +452,22 @@ def custom_docs():
 
                 const resBox = document.getElementById(`res-${idx}`);
                 resBox.innerText = `Fetching ${url} ...`;
+                resBox.style.color = '#ffdd95';
                 
                 try {
                     const req = await fetch(url);
                     const isJson = req.headers.get("content-type")?.includes("json");
                     if(isJson) {
                         const json = await req.json();
+                        resBox.style.color = '#a5d6ff';
                         resBox.innerText = JSON.stringify(json, null, 2);
                     } else {
                         const text = await req.text();
+                        resBox.style.color = '#a5d6ff';
                         resBox.innerText = text;
                     }
                 } catch(e) {
+                    resBox.style.color = '#ff5e5e';
                     resBox.innerText = "Error: " + e.message;
                 }
             }
