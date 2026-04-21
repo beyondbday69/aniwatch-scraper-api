@@ -81,6 +81,7 @@ def read_root():
             "sources": "/sources/{server_id}",
             "megaplay": "/megaplay/{ep_id}",
             "megaplay_mal": "/megaplay/mal/{mal_id}/{ep_num}",
+            "mal_search": "/mal/search?q={query}",
             "genre": "/genre/{name}"
         }
     }
@@ -229,6 +230,29 @@ def get_megaplay_mal(mal_id: str, ep_num: str):
         "dub": f"https://megaplay.buzz/stream/mal/{mal_id}/{ep_num}/dub",
         "raw": f"https://megaplay.buzz/stream/mal/{mal_id}/{ep_num}/raw"
     }
+
+@app.get("/mal/search")
+def search_mal(q: str = Query(...)):
+    try:
+        r = requests.get(f"https://api.jikan.moe/v4/anime?q={q}", timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        results = []
+        for anime in data.get("data", []):
+            results.append({
+                "mal_id": str(anime.get("mal_id")),
+                "title": anime.get("title"),
+                "title_english": anime.get("title_english"),
+                "image": anime.get("images", {}).get("jpg", {}).get("image_url"),
+                "type": anime.get("type"),
+                "episodes": anime.get("episodes"),
+                "score": anime.get("score"),
+                "year": anime.get("year"),
+                "synopsis": anime.get("synopsis")
+            })
+        return {"query": q, "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
