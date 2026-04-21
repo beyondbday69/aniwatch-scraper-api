@@ -255,12 +255,45 @@ def search_mal(q: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def parse_mal_card(anime):
+    return {
+        "title": anime.get("title") or "Unknown",
+        "japanese_title": anime.get("title_japanese") or "",
+        "anime_id": str(anime.get("mal_id", "")),
+        "image": anime.get("images", {}).get("jpg", {}).get("large_image_url") or anime.get("images", {}).get("jpg", {}).get("image_url") or "",
+        "type": anime.get("type") or "",
+        "duration": anime.get("duration") or "",
+        "release_date": str(anime.get("year") or ""),
+        "sub": None,
+        "dub": None,
+        "episodes": str(anime.get("episodes") or ""),
+        "description": anime.get("synopsis") or ""
+    }
+
 @app.get("/mal/home")
 def get_mal_home():
     try:
-        r = requests.get("https://api.jikan.moe/v4/seasons/now", timeout=10)
-        r.raise_for_status()
-        return {"results": r.json().get("data", [])}
+        import time
+        r1 = requests.get("https://api.jikan.moe/v4/seasons/now?limit=12", timeout=10).json()
+        time.sleep(0.35)
+        r2 = requests.get("https://api.jikan.moe/v4/top/anime?filter=bypopularity&limit=10", timeout=10).json()
+        time.sleep(0.35)
+        r3 = requests.get("https://api.jikan.moe/v4/top/anime?filter=airing&limit=10", timeout=10).json()
+
+        latest = [parse_mal_card(a) for a in r1.get("data", [])]
+        popular = [parse_mal_card(a) for a in r2.get("data", [])]
+        airing = [parse_mal_card(a) for a in r3.get("data", [])]
+
+        return {
+            "spotlight": latest[:5],
+            "trending": popular[:10],
+            "top_airing": airing,
+            "most_popular": popular,
+            "most_favorite": popular, 
+            "latest_completed": popular,
+            "latest_episodes": latest,
+            "genres": []
+        }
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/genres")
