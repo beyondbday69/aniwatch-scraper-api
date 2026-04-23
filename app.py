@@ -416,7 +416,7 @@ def get_doc_html(title, subtitle, endpoints_json):
         <div class="container" id="api-list"></div>
 
         <script>
-            const endpoints = JSON.parse(endpoints_json);
+            const endpoints = """ + endpoints_json + """;
 
             const container = document.getElementById("api-list");
 
