@@ -71,8 +71,11 @@ def parse_card(el):
 def read_root():
     return {
         "message": "Welcome to AniwatchTV Unofficial API (Hybrid Targeting Enabled)",
-        "documentation": "/docs",
-        "usage": "Append ?provider=co for aniwatch.co.at or ?provider=tv for aniwatchtv.to (default)",
+        "documentation": {
+            "tv": "/docs/tv",
+            "co": "/docs/co",
+            "mal": "/docs/mal"
+        },
         "endpoints": {
             "home": "/home",
             "search": "/search?q={query}",
@@ -357,15 +360,15 @@ def get_mal_episodes(mal_id: str, page: int = 1):
         return {"episodes": data.get("data", []), "pagination": data.get("pagination", {})}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/docv2", response_class=HTMLResponse)
-def custom_docs():
+
+def get_doc_html(title, subtitle, endpoints_json):
     return """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AniwatchTV API Tester (v2)</title>
+        <title>""" + title + """</title>
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
             :root { --bg: #0a0a0f; --card: #121218; --primary: #ffdd95; --text: #f0f0f0; --border: rgba(255,255,255,0.05); --success: #2ea043; }
@@ -406,30 +409,14 @@ def custom_docs():
     </head>
     <body>
         <header>
-            <h1>ANIWATCH API</h1>
-            <p class="subtitle">Interactive Documentation & Playground</p>
+            <h1>""" + title + """</h1>
+            <p class="subtitle">""" + subtitle + """</p>
         </header>
         
         <div class="container" id="api-list"></div>
 
         <script>
-            const endpoints = [
-                { method: "GET", path: "/home", desc: "Get trending, spotlights, etc.", inputs: [{name: "provider", default: "tv"}] },
-                { method: "GET", path: "/search", desc: "Search anime", inputs: [{name: "q", default: "naruto"}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/anime/{anime_id}", desc: "Anime details", inputs: [{name: "anime_id", default: "naruto-20", isPath: true}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/episodes/{anime_id}", desc: "List episodes", inputs: [{name: "anime_id", default: "naruto-20", isPath: true}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/servers/{ep_id}", desc: "List servers for episode", inputs: [{name: "ep_id", default: "119865", isPath: true}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/sources/{server_id}", desc: "Get iframe link", inputs: [{name: "server_id", default: "123456", isPath: true}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/genre/{genre_name}", desc: "Get anime by genre", inputs: [{name: "genre_name", default: "action", isPath: true}, {name: "page", default: "1"}, {name: "provider", default: "tv"}] },
-                { method: "GET", path: "/megaplay/{ep_id}", desc: "Direct megaplay utility", inputs: [{name: "ep_id", default: "119865", isPath: true}] },
-                { method: "GET", path: "/megaplay/mal/{mal_id}/{ep_num}", desc: "MegaPlay URL generator via MAL ID", inputs: [{name: "mal_id", default: "5114", isPath: true}, {name: "ep_num", default: "1", isPath: true}] },
-                { method: "GET", path: "/mal/search", desc: "MAL search API", inputs: [{name: "q", default: "naruto"}] },
-                { method: "GET", path: "/mal/home", desc: "MAL top/current season anime", inputs: [] },
-                { method: "GET", path: "/mal/genres", desc: "MAL all genres", inputs: [] },
-                { method: "GET", path: "/mal/genre/{genre_id}", desc: "MAL anime by genre", inputs: [{name: "genre_id", default: "1", isPath: true}, {name: "page", default: "1"}] },
-                { method: "GET", path: "/mal/anime/{mal_id}", desc: "MAL anime details", inputs: [{name: "mal_id", default: "20", isPath: true}] },
-                { method: "GET", path: "/mal/episodes/{mal_id}", desc: "MAL episodes list", inputs: [{name: "mal_id", default: "20", isPath: true}, {name: "page", default: "1"}] }
-            ];
+            const endpoints = JSON.parse(endpoints_json);
 
             const container = document.getElementById("api-list");
 
@@ -440,6 +427,9 @@ def custom_docs():
                 let inputsHtml = "";
                 if(ep.inputs) {
                     ep.inputs.forEach(i => {
+                        // Hidden inputs for providers since we pass them automatically
+                        if (i.name === 'provider') return;
+                        
                         inputsHtml += `<div class="input-group">
                             <label>${i.name} ${i.isPath ? "(Path Parameter)" : "(Query Parameter)"}</label>
                             <input type="text" id="input-${idx}-${i.name}" value="${i.default || ''}" placeholder="Enter ${i.name}...">
@@ -475,7 +465,13 @@ def custom_docs():
 
                 if(ep.inputs) {
                     ep.inputs.forEach(i => {
-                        const val = document.getElementById(`input-${idx}-${i.name}`).value;
+                        let val = '';
+                        if (i.name === 'provider') {
+                            val = i.default;
+                        } else {
+                            val = document.getElementById(`input-${idx}-${i.name}`).value;
+                        }
+                        
                         if(i.isPath) {
                             finalPath = finalPath.replace(`{${i.name}}`, encodeURIComponent(val));
                         } else if (val) {
@@ -512,6 +508,18 @@ def custom_docs():
     </body>
     </html>
     """
+
+@app.get("/docs/tv", response_class=HTMLResponse)
+def docs_tv():
+    return get_doc_html("TV Provider API", "Interactive Documentation for aniwatchtv.to", r'''[{"method": "GET", "path": "/home", "desc": "Get trending, spotlights, etc.", "inputs": [{"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/search", "desc": "Search anime", "inputs": [{"name": "q", "default": "naruto"}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/anime/{anime_id}", "desc": "Anime details", "inputs": [{"name": "anime_id", "default": "naruto-20", "isPath": true}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/episodes/{anime_id}", "desc": "List episodes", "inputs": [{"name": "anime_id", "default": "naruto-20", "isPath": true}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/servers/{ep_id}", "desc": "List servers for episode", "inputs": [{"name": "ep_id", "default": "119865", "isPath": true}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/sources/{server_id}", "desc": "Get iframe link", "inputs": [{"name": "server_id", "default": "123456", "isPath": true}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/genre/{genre_name}", "desc": "Get anime by genre", "inputs": [{"name": "genre_name", "default": "action", "isPath": true}, {"name": "page", "default": "1"}, {"name": "provider", "default": "tv"}]}, {"method": "GET", "path": "/megaplay/{ep_id}", "desc": "Direct megaplay utility", "inputs": [{"name": "ep_id", "default": "119865", "isPath": true}]}]''')
+
+@app.get("/docs/co", response_class=HTMLResponse)
+def docs_co():
+    return get_doc_html("CO Provider API", "Interactive Documentation for aniwatch.co.at", r'''[{"method": "GET", "path": "/home", "desc": "Get trending, spotlights, etc.", "inputs": [{"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/search", "desc": "Search anime", "inputs": [{"name": "q", "default": "naruto"}, {"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/anime/{anime_id}", "desc": "Anime details", "inputs": [{"name": "anime_id", "default": "naruto-20", "isPath": true}, {"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/episodes/{anime_id}", "desc": "List episodes", "inputs": [{"name": "anime_id", "default": "naruto-20", "isPath": true}, {"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/servers/{ep_id}", "desc": "List servers for episode", "inputs": [{"name": "ep_id", "default": "119865", "isPath": true}, {"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/sources/{server_id}", "desc": "Get iframe link", "inputs": [{"name": "server_id", "default": "123456", "isPath": true}, {"name": "provider", "default": "co"}]}, {"method": "GET", "path": "/genre/{genre_name}", "desc": "Get anime by genre", "inputs": [{"name": "genre_name", "default": "action", "isPath": true}, {"name": "page", "default": "1"}, {"name": "provider", "default": "co"}]}]''')
+
+@app.get("/docs/mal", response_class=HTMLResponse)
+def docs_mal():
+    return get_doc_html("MAL API", "Interactive Documentation for MyAnimeList Data", r'''[{"method": "GET", "path": "/megaplay/mal/{mal_id}/{ep_num}", "desc": "MegaPlay URL generator via MAL ID", "inputs": [{"name": "mal_id", "default": "5114", "isPath": true}, {"name": "ep_num", "default": "1", "isPath": true}]}, {"method": "GET", "path": "/mal/search", "desc": "MAL search API", "inputs": [{"name": "q", "default": "naruto"}]}, {"method": "GET", "path": "/mal/home", "desc": "MAL top/current season anime", "inputs": []}, {"method": "GET", "path": "/mal/genres", "desc": "MAL all genres", "inputs": []}, {"method": "GET", "path": "/mal/genre/{genre_id}", "desc": "MAL anime by genre", "inputs": [{"name": "genre_id", "default": "1", "isPath": true}, {"name": "page", "default": "1"}]}, {"method": "GET", "path": "/mal/anime/{mal_id}", "desc": "MAL anime details", "inputs": [{"name": "mal_id", "default": "20", "isPath": true}]}, {"method": "GET", "path": "/mal/episodes/{mal_id}", "desc": "MAL episodes list", "inputs": [{"name": "mal_id", "default": "20", "isPath": true}, {"name": "page", "default": "1"}]}]''')
 
 if __name__ == "__main__":
     import uvicorn
