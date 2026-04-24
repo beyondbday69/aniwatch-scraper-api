@@ -17,7 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Connection": "keep-alive"
+}
 AJAX_HEADERS = {**HEADERS, "X-Requested-With": "XMLHttpRequest"}
 
 def get_base(provider: str):
@@ -118,7 +123,8 @@ def get_home(provider: str = "tv"):
 def get_genre(genre_name: str, page: int = 1, provider: str = "tv"):
     try:
         base = get_base(provider)
-        r = requests.get(f"{base}/genre/{genre_name}?page={page}", headers=HEADERS)
+        url = f"{base}/genre/{genre_name}/?page={page}" if provider == "co" else f"{base}/genre/{genre_name}?page={page}"
+        r = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(r.text, 'html.parser')
         return {"genre": genre_name, "provider": provider, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
