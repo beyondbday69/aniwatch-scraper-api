@@ -114,7 +114,7 @@ def get_home(provider: str = "tv"):
         return data
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/genre/{genre_name}")
+@app.get("/genre/{genre_name:path}")
 def get_genre(genre_name: str, page: int = 1, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -133,7 +133,7 @@ def search_api(q: str = Query(...), provider: str = "tv"):
         return {"query": q, "provider": provider, "results": [parse_card(i) for i in soup.find_all('div', class_=re.compile(r'flw-item'))]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/anime/{anime_id}")
+@app.get("/anime/{anime_id:path}")
 def get_anime(anime_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -163,17 +163,49 @@ def get_anime(anime_id: str, provider: str = "tv"):
         }
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/episodes/{anime_id}")
+@app.get("/episodes/{anime_id:path}")
 def get_episodes(anime_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
         if provider == "co":
-            r = requests.get(f"{base}/{anime_id}", headers=HEADERS)
+            # Handle full URLs or slugs with trailing slashes
+            clean_id = get_slug(anime_id)
+            url = f"{base}/{clean_id}"
+            r = requests.get(url, headers=HEADERS)
+            
+            # Nonce extraction
             m = re.search(r'episode_nonce":"([^"]+)"', r.text)
             nonce = m.group(1) if m else ""
+            
+            # Anime ID extraction (try multiple attributes)
             soup = BeautifulSoup(r.text, "html.parser")
+            real_id = ""
+            
+            # Check ani_detail attributes
             detail = soup.find(id="ani_detail")
-            real_id = detail.get("data-anime-id") if detail else ""
+            if detail:
+                real_id = detail.get("data-anime-id") or detail.get("data-animeid") or detail.get("data-id") or ""
+            
+            # Fallback: check shortlink or other data attributes
+            if not real_id:
+                shortlink = soup.find("link", rel="shortlink")
+                if shortlink:
+                    m_id = re.search(r'\?p=(\d+)', shortlink.get("href", ""))
+                    if m_id: real_id = m_id.group(1)
+            
+            if not real_id:
+                # Last resort: search for data-animeid in any tag
+                tag_with_id = soup.find(lambda tag: tag.has_attr('data-animeid') or tag.has_attr('data-anime-id'))
+                if tag_with_id:
+                    real_id = tag_with_id.get('data-animeid') or tag_with_id.get('data-anime-id')
+
+            if not real_id:
+                # If we still don't have it, maybe clean_id IS the integer ID?
+                if clean_id.isdigit(): real_id = clean_id
+
+            if not real_id:
+                return {"provider": provider, "episodes": [], "message": "Could not identify anime ID"}
+
             payload = {"action": "hianime_episode_list", "anime_id": real_id, "nonce": nonce}
             res = requests.post(f"{base}/wp-admin/admin-ajax.php", data=payload, headers=HEADERS).json()
             s = BeautifulSoup(res.get("html", ""), "html.parser")
@@ -187,15 +219,41 @@ def get_episodes(anime_id: str, provider: str = "tv"):
         return {"provider": provider, "episodes": [{"ep_id": a["data-id"], "number": a["data-number"], "title": a["title"]} for a in s.find_all("a", class_="ep-item")]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/servers/{ep_id}")
+@app.get("/servers/{ep_id:path}")
 def get_servers(ep_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
         if provider == "co":
-            r = requests.get(f"{base}/?p={ep_id}", headers=HEADERS, allow_redirects=True)
-            m = re.search(r'episode_nonce":"([^"]+)"', r.text)
-            nonce = m.group(1) if m else ""
-            payload = {"action": "hianime_episode_servers", "episode_id": ep_id, "nonce": nonce}
+            # Handle full URL or slug if passed as ep_id
+            clean_id = get_slug(ep_id)
+            if not clean_id.isdigit():
+                # If it's a slug, we need to fetch the page to find the real episode ID
+                r = requests.get(f"{base}/{clean_id}", headers=HEADERS)
+                # Look for data-id in the page (usually on the server items or in the URL)
+                m = re.search(r'episode_nonce":"([^"]+)"', r.text)
+                nonce = m.group(1) if m else ""
+                
+                # Try to find the episode ID from data-id of an active server or a specific tag
+                soup = BeautifulSoup(r.text, "html.parser")
+                detail = soup.find(id="ani_detail")
+                # For servers, the ep_id we need for the AJAX is actually the post ID of the episode
+                real_ep_id = ""
+                shortlink = soup.find("link", rel="shortlink")
+                if shortlink:
+                    m_id = re.search(r'\?p=(\d+)', shortlink.get("href", ""))
+                    if m_id: real_ep_id = m_id.group(1)
+                
+                if not real_ep_id: return {"provider": provider, "servers": [], "message": "Could not identify episode ID"}
+                
+                payload = {"action": "hianime_episode_servers", "episode_id": real_ep_id, "nonce": nonce}
+            else:
+                # ep_id is already an integer
+                # We still need a nonce. Let's try to get it from the home page or a quick fetch
+                r = requests.get(f"{base}/?p={clean_id}", headers=HEADERS, allow_redirects=True)
+                m = re.search(r'episode_nonce":"([^"]+)"', r.text)
+                nonce = m.group(1) if m else ""
+                payload = {"action": "hianime_episode_servers", "episode_id": clean_id, "nonce": nonce}
+
             res = requests.post(f"{base}/wp-admin/admin-ajax.php", data=payload, headers=HEADERS).json()
             s = BeautifulSoup(res.get("html", ""), "html.parser")
             servers = []
@@ -208,7 +266,7 @@ def get_servers(ep_id: str, provider: str = "tv"):
         return {"provider": provider, "servers": [{"server_id": d["data-id"], "name": d.get_text().strip(), "type": d["data-type"]} for d in s.find_all("div", class_="server-item")]}
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/sources/{server_id}")
+@app.get("/sources/{server_id:path}")
 def get_sources(server_id: str, provider: str = "tv"):
     try: 
         if provider == "co":
