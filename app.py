@@ -70,7 +70,51 @@ def parse_card(el):
         "description": desc
     }
 
+
+import os
+import json
+import hashlib
+import time
+from functools import wraps
+
+# Setup Cache Directory (fallback to /tmp/cache for Vercel)
+CACHE_DIR = "/cache"
+try:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    with open(os.path.join(CACHE_DIR, "test.txt"), "w") as f:
+        f.write("test")
+except (OSError, PermissionError):
+    CACHE_DIR = "/tmp/cache"
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+def cache_response(expiration=86400):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key_data = {"func": func.__name__, "args": args, "kwargs": kwargs}
+            key_hash = hashlib.md5(json.dumps(key_data, sort_keys=True, default=str).encode('utf-8')).hexdigest()
+            cache_file = os.path.join(CACHE_DIR, f"{key_hash}.json")
+            
+            if os.path.exists(cache_file):
+                if time.time() - os.path.getmtime(cache_file) < expiration:
+                    try:
+                        with open(cache_file, "r") as f:
+                            return json.load(f)
+                    except Exception:
+                        pass
+            
+            result = func(*args, **kwargs)
+            try:
+                with open(cache_file, "w") as f:
+                    json.dump(result, f)
+            except Exception:
+                pass
+            return result
+        return wrapper
+    return decorator
+
 # --- API ENDPOINTS ---
+
 
 @app.get("/")
 def read_root():
@@ -96,6 +140,7 @@ def read_root():
     }
 
 @app.get("/home")
+@cache_response(expiration=86400)
 def get_home(provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -120,6 +165,7 @@ def get_home(provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/genre/{genre_name:path}")
+@cache_response(expiration=86400)
 def get_genre(genre_name: str, page: int = 1, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -130,6 +176,7 @@ def get_genre(genre_name: str, page: int = 1, provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
+@cache_response(expiration=86400)
 def search_api(q: str = Query(...), provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -140,6 +187,7 @@ def search_api(q: str = Query(...), provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/anime/{anime_id:path}")
+@cache_response(expiration=86400)
 def get_anime(anime_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -170,6 +218,7 @@ def get_anime(anime_id: str, provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/episodes/{anime_id:path}")
+@cache_response(expiration=86400)
 def get_episodes(anime_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -226,6 +275,7 @@ def get_episodes(anime_id: str, provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/servers/{ep_id:path}")
+@cache_response(expiration=86400)
 def get_servers(ep_id: str, provider: str = "tv"):
     try:
         base = get_base(provider)
@@ -273,6 +323,7 @@ def get_servers(ep_id: str, provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/sources/{server_id:path}")
+@cache_response(expiration=86400)
 def get_sources(server_id: str, provider: str = "tv"):
     try: 
         if provider == "co":
@@ -313,10 +364,12 @@ def get_sources(server_id: str, provider: str = "tv"):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/megaplay/{ep_id}")
+@cache_response(expiration=86400)
 def get_megaplay(ep_id: str):
     return {"episode_id": ep_id, "sub": f"https://megaplay.buzz/stream/s-2/{ep_id}/sub", "dub": f"https://megaplay.buzz/stream/s-2/{ep_id}/dub", "raw": f"https://megaplay.buzz/stream/s-2/{ep_id}/raw"}
 
 @app.get("/megaplay/mal/{mal_id}/{ep_num}")
+@cache_response(expiration=86400)
 def get_megaplay_mal(mal_id: str, ep_num: str):
     return {
         "mal_id": mal_id,
@@ -327,6 +380,7 @@ def get_megaplay_mal(mal_id: str, ep_num: str):
     }
 
 @app.get("/mal/search")
+@cache_response(expiration=86400)
 def search_mal(q: str = Query(...)):
     try:
         r = requests.get(f"https://api.jikan.moe/v4/anime?q={q}", timeout=10)
@@ -354,6 +408,7 @@ def parse_mal_card(anime):
     }
 
 @app.get("/mal/home")
+@cache_response(expiration=86400)
 def get_mal_home():
     try:
         import time
@@ -380,6 +435,7 @@ def get_mal_home():
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/genre/{genre_id}")
+@cache_response(expiration=86400)
 def get_mal_genre_anime(genre_id: str, page: int = 1):
     try:
         r = requests.get(f"https://api.jikan.moe/v4/anime?genres={genre_id}&page={page}", timeout=10)
@@ -396,6 +452,7 @@ def get_mal_genre_anime(genre_id: str, page: int = 1):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/genres")
+@cache_response(expiration=86400)
 def get_mal_genres():
     try:
         r = requests.get("https://api.jikan.moe/v4/genres/anime", timeout=10)
@@ -404,6 +461,7 @@ def get_mal_genres():
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/anime/{mal_id}")
+@cache_response(expiration=86400)
 def get_mal_anime(mal_id: str):
     try:
         r = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}/full", timeout=10)
@@ -443,6 +501,7 @@ def get_mal_anime(mal_id: str):
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/mal/episodes/{mal_id}")
+@cache_response(expiration=86400)
 def get_mal_episodes(mal_id: str, page: int = 1):
     try:
         r = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}/episodes?page={page}", timeout=10)
