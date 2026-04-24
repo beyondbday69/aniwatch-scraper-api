@@ -272,9 +272,36 @@ def get_sources(server_id: str, provider: str = "tv"):
         if provider == "co":
             try:
                 link = base64.b64decode(server_id).decode('utf-8')
-                return {"provider": provider, "type": "iframe", "link": link}
+                # Attempt to extract direct video sources from the player link
+                direct_sources = []
+                try:
+                    pr = requests.get(link, headers=HEADERS, timeout=5)
+                    ps = BeautifulSoup(pr.text, 'html.parser')
+                    
+                    # Check <source> tags
+                    for s_tag in ps.find_all('source'):
+                        src = s_tag.get('src')
+                        if src: direct_sources.append({"file": requests.compat.urljoin(link, src), "type": s_tag.get('type', 'video/mp4')})
+                    
+                    # Check <video> tags
+                    for v_tag in ps.find_all('video'):
+                        src = v_tag.get('src')
+                        if src: direct_sources.append({"file": requests.compat.urljoin(link, src), "type": "video/mp4"})
+                    
+                    # Regex fallback for MP4/M3U8
+                    if not direct_sources:
+                        for m in re.findall(r'https?://[^\s"\'<> ]+\.(?:mp4|m3u8)[^\s"\'<> ]*', pr.text):
+                            direct_sources.append({"file": m, "type": "video/mp4" if ".mp4" in m else "application/x-mpegURL"})
+                except: pass
+
+                return {
+                    "provider": provider, 
+                    "type": "iframe", 
+                    "link": link,
+                    "sources": direct_sources if direct_sources else [{"file": link, "type": "iframe"}]
+                }
             except:
-                return {"provider": provider, "type": "iframe", "link": ""}
+                return {"provider": provider, "type": "iframe", "link": "", "sources": []}
         base = get_base(provider)
         return requests.get(f"{base}/ajax/v2/episode/sources?id={server_id}", headers=AJAX_HEADERS).json()
     except Exception as e: raise HTTPException(status_code=500, detail=str(e))
